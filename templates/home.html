@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Accueil — Planning 2026{% endblock %}
+{% block page_title %}Bienvenue{% endblock %}
+{% block page_subtitle %}Ton espace pour organiser Deen, corps, esprit et maison — jour après jour, en 2026.{% endblock %}
+
+{% block content %}
+
+<div class="hero">
+  <span class="hero-greeting" id="heroGreeting">Bonjour</span>
+  <h2>Une année,<br>sept habitudes,<br>un seul toi.</h2>
+  <p>Chaque petite case cochée ici est un pas de plus. Choisis une rubrique ci-dessous et commence ta journée.</p>
+</div>
+
+<div class="grid-auto">
+
+  <a class="nav-card" href="{{ url_for('deen') }}">
+    <span class="nav-card-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 4c-2.4 1.2-4 3.7-4 6.5S14.6 15.8 17 17c-1.4.8-3 1.3-4.7 1.3C7 18.3 3 14.3 3 9S7 -0.3 12.3 -0.3"/></svg>
+    </span>
+    <h4>Deen</h4>
+    <p>Salat à l'heure, hifd du Juz' Amma, lecture quotidienne du Coran et un livre en cours.</p>
+    <span class="nav-card-go">Ouvrir →</span>
+  </a>
+
+  <a class="nav-card" href="{{ url_for('sport') }}">
+    <span class="nav-card-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5 17.5 17.5M4 9 9 4l2 2-5 5Zm9 9 5-5 2 2-5 5ZM2 11l2-2M20 13l2 2"/></svg>
+    </span>
+    <h4>Sport</h4>
+    <p>Étirements, 10 000 pas, gym 5x/semaine, 3L d'eau et natation.</p>
+    <span class="nav-card-go">Ouvrir →</span>
+  </a>
+
+  <a class="nav-card" href="{{ url_for('regime') }}">
+    <span class="nav-card-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4-2.5 7-6 7-10.5A7 7 0 0 0 12 3a7 7 0 0 0-7 7.5C5 15 8 18.5 12 21Z"/></svg>
+    </span>
+    <h4>Régime</h4>
+    <p>Ton journal alimentaire au jour le jour, et le défi 75 Hard.</p>
+    <span class="nav-card-go">Ouvrir →</span>
+  </a>
+
+  <a class="nav-card" href="{{ url_for('learning') }}">
+    <span class="nav-card-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5 12 3l9 3.5-9 3.5-9-3.5Z"/><path d="M7 9v5.2c0 .7 2.1 2.3 5 2.3s5-1.6 5-2.3V9"/></svg>
+    </span>
+    <h4>Learning</h4>
+    <p>Une nouvelle langue, une nouvelle activité, une touche de culture.</p>
+    <span class="nav-card-go">Ouvrir →</span>
+  </a>
+
+  <a class="nav-card" href="{{ url_for('selfcare') }}">
+    <span class="nav-card-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4.5 4.5 0 0 1 7-3.8A4.5 4.5 0 0 1 19 10c0 5.6-7 10-7 10Z"/></svg>
+    </span>
+    <h4>Selfcare</h4>
+    <p>Prendre soin de toi : corps, esprit, humeur du jour.</p>
+    <span class="nav-card-go">Ouvrir →</span>
+  </a>
+
+  <a class="nav-card" href="{{ url_for('homecare') }}">
+    <span class="nav-card-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v10h12V10"/></svg>
+    </span>
+    <h4>Homecare</h4>
+    <p>1h30 par jour pour entretenir ton espace de vie.</p>
+    <span class="nav-card-go">Ouvrir →</span>
+  </a>
+
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">Aperçu rapide</span>
+      <h3>Tout en un coup d'œil</h3>
+    </div>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost btn-sm">Voir le tableau de bord</a>
+  </div>
+  <p class="card-note">Le tableau de bord rassemble automatiquement ta progression de chaque page : prières, Coran, sport, learning, selfcare et homecare — sans rien ressaisir.</p>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const h = new Date().getHours();
+  const greetEl = document.getElementById('heroGreeting');
+  if(greetEl) greetEl.textContent = (h >= 5 && h < 18) ? 'Bonjour' : 'Bonsoir';
+</script>
+{% endblock %}

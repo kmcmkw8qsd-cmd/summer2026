@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Learning — Planning 2026{% endblock %}
+{% block page_title %}Learning{% endblock %}
+{% block page_subtitle %}Une langue, une activité, une touche de culture — chaque jour un peu plus.{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">Au choix</span>
+      <h3>Nouvelle langue</h3>
+    </div>
+    <span class="icon-badge">🌐</span>
+  </div>
+  <p class="card-note">Choisis la langue que tu apprends, puis coche les compétences travaillées aujourd'hui.</p>
+
+  <div class="field" style="max-width:420px;">
+    <label for="langInput">Langue en cours</label>
+    <input type="text" id="langInput" placeholder="Ex : nom de la langue" data-persist="learning_lang">
+  </div>
+
+  <div class="checklist" data-checklist="langcheck" data-daily="true">
+    <label class="check-item" data-id="speaking">
+      <input type="checkbox">
+      <span class="label">Speaking — pratique orale</span>
+    </label>
+    <label class="check-item" data-id="writing">
+      <input type="checkbox">
+      <span class="label">Writing — pratique écrite</span>
+    </label>
+    <label class="check-item" data-id="listening">
+      <input type="checkbox">
+      <span class="label">Listening / Reading</span>
+    </label>
+  </div>
+
+  <div class="sub-title">Régularité (30 jours)</div>
+  <div class="tile-grid" data-tilegrid="lang_streak" data-count="30"></div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">À toi de choisir</span>
+      <h3>Nouvelle activité</h3>
+    </div>
+    <span class="icon-badge">🎯</span>
+  </div>
+  <p class="card-note">Décris l'activité que tu apprends en ce moment (instrument, dessin, code, sport...).</p>
+
+  <div class="field" style="max-width:420px;">
+    <label for="activityInput">Mon activité</label>
+    <input type="text" id="activityInput" placeholder="Ex : nom de l'activité" data-persist="learning_activity">
+  </div>
+
+  <div class="checklist" data-checklist="activity_today" data-daily="true">
+    <label class="check-item" data-id="practiced">
+      <input type="checkbox">
+      <span class="label">Pratiquée aujourd'hui</span>
+    </label>
+  </div>
+
+  <div class="sub-title">Régularité (30 jours)</div>
+  <div class="tile-grid" data-tilegrid="activity_streak" data-count="30"></div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">Au choix</span>
+      <h3>Culture</h3>
+    </div>
+    <span class="icon-badge">🎭</span>
+  </div>
+  <p class="card-note">Film, livre, documentaire, musique, exposition — note ce qui te fait découvrir autre chose.</p>
+
+  <div class="field">
+    <label for="cultureInput">Découverte du jour</label>
+    <input type="text" id="cultureInput" placeholder="Ex : ce que tu as découvert" data-persist="culture_today">
+  </div>
+
+  <div class="sub-title">Régularité (30 jours)</div>
+  <div class="tile-grid" data-tilegrid="culture_streak" data-count="30"></div>
+</div>
+
+{% endblock %}

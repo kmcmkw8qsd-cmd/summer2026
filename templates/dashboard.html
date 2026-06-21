@@ -1,0 +1,794 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord — Planning 2026{% endblock %}
+{% block page_title %}Tableau de bord{% endblock %}
+{% block page_subtitle %}Ta progression en temps réel — Été 2026{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Score Hero ───────────────────────────────────────── */
+.hero-score {
+  background: var(--primary-d);
+  border-radius: var(--radius-l);
+  padding: 40px 44px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 32px;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero-score::before {
+  content:"";
+  position:absolute;
+  right:-60px;top:-60px;
+  width:260px;height:260px;
+  border-radius:50%;
+  border:1px solid rgba(200,149,75,0.18);
+  pointer-events:none;
+}
+.hero-score::after {
+  content:"";
+  position:absolute;
+  right:20px;top:30px;
+  width:160px;height:160px;
+  border-radius:50%;
+  border:1px solid rgba(239,233,220,0.08);
+  pointer-events:none;
+}
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-l);
+  margin-bottom: 10px;
+}
+.hero-number {
+  font-family: var(--font-display);
+  font-size: 4rem;
+  font-weight: 600;
+  color: #FAF6EE;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.hero-number span {
+  font-size: 1.4rem;
+  color: #9C8E78;
+  font-weight: 400;
+}
+.hero-meta {
+  font-size: 0.82rem;
+  color: #9C8E78;
+  margin-top: 14px;
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+.hero-meta strong { color: var(--accent-l); }
+
+/* Ring */
+.ring-wrap { position: relative; z-index: 1; flex-shrink: 0; }
+.ring-svg { transform: rotate(-90deg); display: block; }
+.ring-track { fill:none; stroke:rgba(239,233,220,0.1); stroke-width:7; }
+.ring-prog  {
+  fill:none; stroke:var(--accent);
+  stroke-width:7; stroke-linecap:round;
+  stroke-dasharray:283;
+  stroke-dashoffset:283;
+  transition: stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1);
+}
+.ring-center {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column;
+}
+.ring-center-num {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: #FAF6EE;
+  line-height: 1;
+}
+.ring-center-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--accent-l);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* ── Grille stats ─────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 18px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  cursor: default;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-m);
+}
+.stat-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.stat-card-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.stat-card-ico {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: var(--accent-pale);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem;
+}
+.stat-card-val {
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  color: var(--primary-d);
+  line-height: 1;
+}
+.stat-card-val small {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin-left: 2px;
+}
+.stat-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.stat-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary-l), var(--accent));
+  width: 0%;
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+}
+.stat-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+.stat-pct {
+  font-family: var(--font-mono);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ── Calendrier ──────────────────────────────────────── */
+.cal-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  padding: 26px 28px;
+}
+.cal-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.cal-header h3 { font-size: 1.1rem; }
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  flex-wrap: wrap;
+}
+.cal-legend-dot {
+  width: 11px; height: 11px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+}
+.day-labels {
+  display: grid;
+  grid-template-columns: repeat(7,1fr);
+  gap: 5px;
+  margin-bottom: 5px;
+}
+.day-labels span {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7,1fr);
+  gap: 5px;
+}
+.cal-day {
+  aspect-ratio: 1;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.15s;
+  position: relative;
+}
+.cal-day:hover:not(.cal-future) { border-color: var(--accent); transform: translateY(-1px); }
+.cal-day.cal-future { opacity: 0.28; cursor: default; }
+.cal-day.cal-today  { border-color: var(--accent) !important; border-width: 2px; }
+.cal-day.lv0 { background: var(--surface-2); }
+.cal-day.lv1 { background: #DCE8D8; border-color: #B2CCB0; }
+.cal-day.lv2 { background: #C3D9BE; border-color: #8DB88A; }
+.cal-day.lv3 { background: #A3C89E; border-color: #5E9A5C; }
+.cal-day.lv4 { background: #7BB077; border-color: #3A7838; }
+.cal-day.lv5 { background: var(--primary-l); border-color: var(--primary); color: #fff; }
+.cal-day.lv5::after {
+  content:"✦";
+  position:absolute;
+  top:1px;right:2px;
+  font-size:0.45rem;
+  color: var(--accent-l);
+}
+
+/* ── Catégories ──────────────────────────────────────── */
+.cats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+.cat-item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: box-shadow 0.15s;
+}
+.cat-item:hover { box-shadow: var(--shadow-s); }
+.cat-ico {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: var(--accent-pale);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.cat-body { flex: 1; min-width: 0; }
+.cat-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--primary-d);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cat-name-pct {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--primary);
+  font-weight: 600;
+}
+.cat-bar {
+  width: 100%;
+  height: 5px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.cat-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary-l), var(--accent));
+  width: 0%;
+  transition: width 1.1s cubic-bezier(.4,0,.2,1);
+}
+.cat-sub {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+
+/* ── Semaine ─────────────────────────────────────────── */
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+.week-day {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  padding: 10px 8px;
+  text-align: center;
+}
+.week-day.today-col {
+  border-color: var(--accent);
+  background: var(--accent-pale);
+}
+.week-day-name {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.week-day.today-col .week-day-name { color: var(--accent); }
+.week-score {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--primary-d);
+  line-height: 1;
+}
+.week-day.today-col .week-score { color: var(--primary-d); }
+.week-mini-bar {
+  height: 3px;
+  background: var(--line);
+  border-radius: 999px;
+  margin-top: 5px;
+  overflow: hidden;
+}
+.week-mini-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-l), var(--accent));
+  border-radius: 999px;
+  transition: width 0.8s ease;
+}
+
+/* ── Section title ───────────────────────────────────── */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.section-label::after {
+  content:""; flex:1;
+  height:1px; background:var(--line);
+}
+
+@media (max-width: 720px) {
+  .hero-score { grid-template-columns: 1fr; }
+  .ring-wrap { display: none; }
+  .hero-number { font-size: 2.8rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ① Hero score global -->
+<div class="hero-score">
+  <div>
+    <p class="hero-eyebrow">Été 2026 · Semaine <span id="db-week">—</span> / 13</p>
+    <div class="hero-number" id="db-global-score">—<span> / 100</span></div>
+    <p style="color:#9C8E78;font-size:0.84rem;margin:4px 0 0;">Score global du jour</p>
+    <div class="hero-meta">
+      <span>Jours actifs : <strong id="db-active-days">0</strong> / <span id="db-passed-days">0</span></span>
+      <span>Meilleur streak : <strong id="db-streak">0</strong> jours</span>
+    </div>
+  </div>
+  <div class="ring-wrap" style="width:110px;height:110px;">
+    <svg class="ring-svg" width="110" height="110" viewBox="0 0 110 110">
+      <circle class="ring-track" cx="55" cy="55" r="45"/>
+      <circle class="ring-prog" id="db-ring" cx="55" cy="55" r="45"/>
+    </svg>
+    <div class="ring-center">
+      <span class="ring-center-num" id="db-ring-num">0%</span>
+      <span class="ring-center-label">3 mois</span>
+    </div>
+  </div>
+</div>
+
+<!-- ② Stats aujourd'hui -->
+<div>
+  <p class="section-label">Aujourd'hui</p>
+  <div class="stats-grid" id="db-stats-grid"></div>
+</div>
+
+<!-- ③ Cette semaine -->
+<div>
+  <p class="section-label">Cette semaine</p>
+  <div class="cal-card" style="padding-bottom:20px;">
+    <div class="week-grid" id="db-week-grid"></div>
+  </div>
+</div>
+
+<!-- ④ Calendrier été -->
+<div>
+  <p class="section-label">Activité · Juin → Août 2026</p>
+  <div class="cal-card">
+    <div class="cal-header">
+      <h3>Vue d'ensemble</h3>
+      <div class="cal-legend">
+        <div class="cal-legend-dot" style="background:var(--surface-2)"></div>
+        <span>0</span>
+        <div class="cal-legend-dot" style="background:#C3D9BE"></div>
+        <div class="cal-legend-dot" style="background:#A3C89E"></div>
+        <div class="cal-legend-dot" style="background:#7BB077"></div>
+        <div class="cal-legend-dot" style="background:var(--primary-l)"></div>
+        <span>Parfait</span>
+      </div>
+    </div>
+    <div class="day-labels">
+      <span>Lun</span><span>Mar</span><span>Mer</span>
+      <span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span>
+    </div>
+    <div class="cal-grid" id="db-cal-grid"></div>
+  </div>
+</div>
+
+<!-- ⑤ Progression par catégorie -->
+<div>
+  <p class="section-label">Progression par catégorie · 3 mois</p>
+  <div class="cats-grid" id="db-cats-grid"></div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ══════════════════════════════════════════════════════
+   DASHBOARD — lit exactement les mêmes clés localStorage
+   que script.js (isoWeekKey identique)
+   ══════════════════════════════════════════════════════ */
+
+/* ── Helpers ─────────────────────────────────────────── */
+/* CORRECTION : ancienne version (d.toISOString().slice(0,10)) convertit
+   en UTC. Avec setHours(0,0,0,0) (heure LOCALE) + toISOString() (UTC),
+   minuit local en Algérie (UTC+1) devient 23h la veille en UTC → TKEY
+   tombait sur HIER. C'est pour ça qu'Eau/Pas/Selfcare/Homecare/Learning/
+   Régime restaient à 0 alors que Salat et Gym (indexés par semaine,
+   jamais convertis en UTC) fonctionnaient. On reconstruit la date à
+   partir des composants locaux, jamais via toISOString().*/
+function fmt(d){
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+/* ── CORRECTION BUG #1 : même calcul isoWeek que script.js ── */
+function isoWeek(d){
+  const t = new Date(d); t.setHours(0,0,0,0);
+  t.setDate(t.getDate() + 3 - (t.getDay()+6)%7);
+  const w = new Date(t.getFullYear(), 0, 4);
+  return `${t.getFullYear()}-W${Math.round(((t-w)/86400000 + w.getDay()+5)/7)}`;
+}
+
+function loadJ(k, fb){
+  try{ const r=localStorage.getItem(k); return r?JSON.parse(r):fb; }
+  catch(e){ return fb; }
+}
+
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const TKEY  = fmt(TODAY);
+const TWEEK = isoWeek(TODAY);
+const TIDX  = (TODAY.getDay()+6)%7; // Lun=0
+
+/* ── Lecture données du jour ─────────────────────────── */
+function getTodayStats(){
+  // Salat — clé : pl_salat_${isoWeek}
+  const salat = loadJ(`pl_salat_${TWEEK}`,{});
+  const prayers=['fajr','dhuhr','asr','maghrib','isha'];
+  const salatDone = prayers.filter(p=>salat[`${p}_${TIDX}`]).length;
+
+  // Water — clé : pl_water_${YYYY-MM-DD}
+  const water = loadJ(`pl_water_${TKEY}`,0);
+
+  // Steps — clé : pl_steps_${YYYY-MM-DD} (localStorage string, pas JSON)
+  const steps = parseInt(localStorage.getItem(`pl_steps_${TKEY}`)||'0',10);
+
+  // Gym cette semaine — clé : pl_gym_${isoWeek}
+  const gym = loadJ(`pl_gym_${TWEEK}`,[]);
+
+  // Selfcare — clé : pl_selfcare_${YYYY-MM-DD}
+  const sc = loadJ(`pl_selfcare_${TKEY}`,{});
+  const scDone = Object.values(sc).filter(Boolean).length;
+
+  // Homecare minutes — clé : pl_homecare_${YYYY-MM-DD}
+  const hc = loadJ(`pl_homecare_${TKEY}`,{});
+  let hcMin=0; Object.values(hc).forEach(v=>{ if(typeof v==='number') hcMin+=v; });
+
+  // Learning — clé : pl_langcheck_${YYYY-MM-DD}
+  const lc = loadJ(`pl_langcheck_${TKEY}`,{});
+  const lcDone = Object.values(lc).filter(Boolean).length;
+
+  // CORRECTION BUG #2 : clé régime = pl_regime_today_${YYYY-MM-DD}
+  const reg = loadJ(`pl_regime_today_${TKEY}`,{});
+  const regOk = reg['respected'] ? 1 : 0;
+
+  return { salatDone, water, steps, gym: gym.length, scDone, hcMin, lcDone, regOk };
+}
+
+/* ── Score d'une journée ─────────────────────────────── */
+function dayScore(dateStr){
+  // CORRECTION : new Date("YYYY-MM-DD") est interprété en UTC par le
+  // moteur JS, pas en heure locale. On force l'heure locale avec
+  // "T00:00:00" pour rester cohérent avec fmt() ci-dessus.
+  const wk = isoWeek(new Date(dateStr+'T00:00:00'));
+  const d = new Date(dateStr+'T00:00:00');
+  const idx = (d.getDay()+6)%7;
+
+  // Deen (salat uniquement — adhkar optionnel)
+  const salat = loadJ(`pl_salat_${wk}`,{});
+  const prayers = ['fajr','dhuhr','asr','maghrib','isha'];
+  const sp = prayers.filter(p=>salat[`${p}_${idx}`]).length/5;
+  const deenS = sp * 100;
+
+  // Sport
+  const steps = parseInt(localStorage.getItem(`pl_steps_${dateStr}`)||'0',10);
+  const water = loadJ(`pl_water_${dateStr}`,0);
+  const stretch = loadJ(`pl_stretching_${dateStr}`,{});
+  const sportS = (
+    (steps>=8000?1:steps/8000)*0.35 +
+    (water>=8?1:water/12)*0.35 +
+    (Object.values(stretch).some(Boolean)?1:0)*0.3
+  )*100;
+
+  // Regime — CORRECTION BUG #3 : bonne clé
+  const reg = loadJ(`pl_regime_today_${dateStr}`,{});
+  const regS = reg['respected']?100:0;
+
+  // Learning
+  const lc = loadJ(`pl_langcheck_${dateStr}`,{});
+  const lcS = Math.min(Object.values(lc).filter(Boolean).length/3,1)*100;
+
+  // Selfcare
+  const sc = loadJ(`pl_selfcare_${dateStr}`,{});
+  const scS = Math.min(Object.values(sc).filter(Boolean).length/4,1)*100;
+
+  // Homecare
+  const hc = loadJ(`pl_homecare_${dateStr}`,{});
+  let hcMin=0; Object.values(hc).forEach(v=>{ if(typeof v==='number') hcMin+=v; });
+  const hcS = Math.min(hcMin/90,1)*100;
+
+  const total = (deenS + sportS + regS + lcS + scS + hcS)/6;
+  return Math.round(total);
+}
+
+/* ── Render complet du dashboard ─────────────────────── */
+function renderDashboard(){
+
+  /* ── Stats du jour → cartes ── */
+  const st = getTodayStats();
+  const STAT_DEFS = [
+    { label:'Salat',        icon:'🕌', val:st.salatDone, max:5  },
+    { label:'Eau (verres)', icon:'💧', val:st.water,     max:12 },
+    { label:'Pas',          icon:'👟', val:st.steps,     max:10000, big:true },
+    { label:'Gym semaine',  icon:'🏋️', val:st.gym,       max:5  },
+    { label:'Selfcare',     icon:'✨', val:st.scDone,    max:6  },
+    { label:'Homecare',     icon:'🏠', val:st.hcMin,     max:90, unit:'min' },
+    { label:'Learning',     icon:'🌐', val:st.lcDone,    max:3  },
+    { label:'Régime',       icon:'🥗', val:st.regOk,     max:1, unit:'/ jour' },
+  ];
+
+  const statsGrid = document.getElementById('db-stats-grid');
+  statsGrid.innerHTML = '';
+  STAT_DEFS.forEach(s=>{
+    const pct = Math.min(100, s.max>0 ? Math.round(s.val/s.max*100):0);
+    const displayVal = s.big && s.val>=1000
+      ? Math.round(s.val/1000*10)/10 + 'k'
+      : s.val;
+    const displayMax = s.big && s.max>=1000
+      ? Math.round(s.max/1000) + 'k'
+      : s.max;
+    const el = document.createElement('div');
+    el.className = 'stat-card';
+    el.innerHTML = `
+      <div class="stat-card-top">
+        <span class="stat-card-label">${s.label}</span>
+        <span class="stat-card-ico">${s.icon}</span>
+      </div>
+      <div class="stat-card-val">${displayVal}<small>/${displayMax}${s.unit?' '+s.unit:''}</small></div>
+      <div class="stat-bar"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
+      <div class="stat-footer">
+        <span>Objectif jour</span>
+        <span class="stat-pct">${pct}%</span>
+      </div>`;
+    statsGrid.appendChild(el);
+  });
+
+  /* ── Vue semaine ── */
+  const DAY_FR = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  const weekGrid = document.getElementById('db-week-grid');
+  weekGrid.innerHTML = '';
+  const monday = new Date(TODAY);
+  monday.setDate(TODAY.getDate() - TIDX);
+
+  for(let i=0;i<7;i++){
+    const d = new Date(monday); d.setDate(monday.getDate()+i);
+    const isFuture = d > TODAY;
+    const isToday = d.getTime() === TODAY.getTime();
+    const score = isFuture ? null : dayScore(fmt(d));
+    const pct = score !== null ? score : 0;
+
+    const el = document.createElement('div');
+    el.className = 'week-day' + (isToday?' today-col':'');
+    el.innerHTML = `
+      <div class="week-day-name">${DAY_FR[i]}</div>
+      <div class="week-score">${isFuture?'—':score}</div>
+      <div class="week-mini-bar">
+        <div class="week-mini-fill" style="width:${isFuture?0:pct}%"></div>
+      </div>`;
+    weekGrid.appendChild(el);
+  }
+
+  /* ── Calendrier été ── */
+  const START = new Date(2026,5,21); // 21 juin
+  const END   = new Date(2026,8,20); // 20 sept
+
+  const calGrid = document.getElementById('db-cal-grid');
+  calGrid.innerHTML = '';
+
+  // Padding lundi
+  const startWday = START.getDay();
+  const pad = (startWday === 0 ? 6 : startWday-1);
+  for(let i=0;i<pad;i++){
+    calGrid.appendChild(document.createElement('div'));
+  }
+
+  let totalDays=0, activeDays=0, sumScore=0, streak=0, curStreak=0;
+
+  const allDays = [];
+  for(let d=new Date(START); d<=END; d.setDate(d.getDate()+1)){
+    allDays.push(new Date(d));
+  }
+
+  allDays.forEach(d=>{
+    const key = fmt(d);
+    const isFuture = d > TODAY;
+    const isToday = d.getTime() === TODAY.getTime();
+
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+    cell.title = key;
+    if(isToday) cell.classList.add('cal-today');
+
+    if(isFuture){
+      cell.classList.add('cal-future');
+      cell.textContent = d.getDate();
+    } else {
+      totalDays++;
+      const sc = dayScore(key);
+      sumScore += sc;
+      const lv = sc>=90?5:sc>=70?4:sc>=45?3:sc>=25?2:sc>0?1:0;
+      cell.classList.add('lv'+lv);
+      cell.textContent = d.getDate();
+      if(lv>0){
+        activeDays++;
+        curStreak++;
+        if(curStreak>streak) streak=curStreak;
+      } else {
+        curStreak=0;
+      }
+    }
+    calGrid.appendChild(cell);
+  });
+
+  /* ── Hero score global ── */
+  const globalScore = totalDays>0 ? Math.round(sumScore/totalDays) : 0;
+  const todayS = dayScore(TKEY);
+
+  document.getElementById('db-global-score').innerHTML = `${todayS}<span> / 100</span>`;
+  document.getElementById('db-active-days').textContent = activeDays;
+  document.getElementById('db-passed-days').textContent = totalDays;
+  document.getElementById('db-streak').textContent = streak;
+
+  const weekNum = Math.max(1, Math.min(13, Math.ceil((TODAY-START)/86400000/7)+1));
+  document.getElementById('db-week').textContent = weekNum;
+
+  // Ring (score 3 mois)
+  const ringPct = globalScore;
+  const CIRC = 2*Math.PI*45;
+  document.getElementById('db-ring-num').textContent = ringPct+'%';
+  setTimeout(()=>{
+    const ring = document.getElementById('db-ring');
+    if(ring) ring.style.strokeDashoffset = CIRC-(ringPct/100)*CIRC;
+  },200);
+
+  /* ── Catégories ── */
+  const CAT_DEFS = [
+    { name:'Deen',     icon:'🕌', desc:'Salat · Coran', score:()=>{
+      const salat = loadJ(`pl_salat_${TWEEK}`,{});
+      const sp = ['fajr','dhuhr','asr','maghrib','isha'].filter(p=>salat[`${p}_${TIDX}`]).length/5;
+      return Math.round(sp*100);
+    }},
+    { name:'Sport',    icon:'🏋️', desc:'Pas · Eau · Gym · Étirements', score:()=>{
+      const steps = parseInt(localStorage.getItem(`pl_steps_${TKEY}`)||'0',10);
+      const water = loadJ(`pl_water_${TKEY}`,0);
+      const stretch = loadJ(`pl_stretching_${TKEY}`,{});
+      const gym = loadJ(`pl_gym_${TWEEK}`,[]);
+      return Math.round((
+        (steps>=8000?1:steps/8000)*0.35+
+        (water>=8?1:water/12)*0.3+
+        (Object.values(stretch).some(Boolean)?1:0)*0.2+
+        (gym.length>=1?0.15:0)
+      )*100);
+    }},
+    { name:'Régime',   icon:'🥗', desc:'Objectif alimentaire respecté', score:()=>{
+      const reg = loadJ(`pl_regime_today_${TKEY}`,{});
+      return reg['respected']?100:0;
+    }},
+    { name:'Learning', icon:'🌐', desc:'Langue · Activité · Culture', score:()=>{
+      const lc = loadJ(`pl_langcheck_${TKEY}`,{});
+      return Math.round(Math.min(Object.values(lc).filter(Boolean).length/3,1)*100);
+    }},
+    { name:'Selfcare', icon:'✨', desc:'Soin · Journal · Humeur', score:()=>{
+      const sc = loadJ(`pl_selfcare_${TKEY}`,{});
+      return Math.round(Math.min(Object.values(sc).filter(Boolean).length/4,1)*100);
+    }},
+    { name:'Homecare', icon:'🏠', desc:'Tâches quotidiennes · 90 min', score:()=>{
+      const hc = loadJ(`pl_homecare_${TKEY}`,{});
+      let m=0; Object.values(hc).forEach(v=>{ if(typeof v==='number') m+=v; });
+      return Math.round(Math.min(m/90,1)*100);
+    }},
+  ];
+
+  const catsGrid = document.getElementById('db-cats-grid');
+  catsGrid.innerHTML = '';
+  CAT_DEFS.forEach(c=>{
+    const pct = c.score();
+    const bar = pct>=80?'var(--primary-l)':pct>=50?'var(--accent)':'#D4A873';
+    const el = document.createElement('div');
+    el.className = 'cat-item';
+    el.innerHTML = `
+      <div class="cat-ico">${c.icon}</div>
+      <div class="cat-body">
+        <div class="cat-name">
+          <span>${c.name}</span>
+          <span class="cat-name-pct">${pct}%</span>
+        </div>
+        <div class="cat-bar">
+          <div class="cat-bar-fill" style="width:0%;background:linear-gradient(90deg,${bar},var(--accent))" data-pct="${pct}"></div>
+        </div>
+        <div class="cat-sub">${c.desc}</div>
+      </div>`;
+    catsGrid.appendChild(el);
+  });
+
+  // Animate category bars
+  setTimeout(()=>{
+    document.querySelectorAll('.cat-bar-fill[data-pct]').forEach(el=>{
+      el.style.width = el.dataset.pct+'%';
+    });
+  },300);
+}
+
+/* ── CORRECTION BUG #4 : pas de location.reload() — mise à jour directe ── */
+document.addEventListener('DOMContentLoaded', renderDashboard);
+document.addEventListener('pl:update', renderDashboard);
+</script>
+{% endblock %}

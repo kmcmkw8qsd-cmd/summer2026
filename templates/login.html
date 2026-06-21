@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion — Planning 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0D1410;
+      --surface:  #131a15;
+      --border:   #1e2b20;
+      --border-h: #2d4030;
+      --green:    #2D5A27;
+      --green-l:  #3a7232;
+      --accent:   #C8954B;
+      --accent-l: #d9a96a;
+      --text:     #EFE9DC;
+      --soft:     #7a8c79;
+      --error:    #e05c5c;
+      --radius:   14px;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      padding: 24px;
+    }
+
+    /* ── Fond décoratif ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 80%, rgba(45,90,39,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 80% 20%, rgba(200,149,75,0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* ── Card ── */
+    .card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 44px 36px 40px;
+      position: relative;
+    }
+
+    /* ── Logo ── */
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .logo-icon {
+      width: 42px; height: 42px;
+      background: var(--green);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo-text h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.15rem;
+      font-weight: 400;
+      color: var(--text);
+      line-height: 1.1;
+    }
+    .logo-text span {
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* ── Titre ── */
+    .heading {
+      margin-bottom: 28px;
+    }
+    .heading h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .heading p {
+      font-size: 0.83rem;
+      color: var(--soft);
+    }
+
+    /* ── Séparateur ── */
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: var(--border);
+      margin-bottom: 28px;
+    }
+
+    /* ── Champs ── */
+    .field {
+      margin-bottom: 14px;
+    }
+    .field label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      color: var(--soft);
+      text-transform: uppercase;
+      margin-bottom: 7px;
+    }
+    .field input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    .field input::placeholder { color: #3a4a3a; }
+    .field input:focus {
+      border-color: var(--border-h);
+      box-shadow: 0 0 0 3px rgba(45,90,39,0.2);
+    }
+
+    /* ── Erreur ── */
+    .error-msg {
+      background: rgba(224,92,92,0.08);
+      border: 1px solid rgba(224,92,92,0.25);
+      border-radius: 9px;
+      padding: 10px 13px;
+      font-size: 0.82rem;
+      color: var(--error);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .error-msg::before { content: '⚠'; font-size: 0.9rem; }
+
+    /* ── Bouton ── */
+    .btn-submit {
+      width: 100%;
+      margin-top: 6px;
+      padding: 13px;
+      background: var(--green);
+      color: var(--text);
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-submit:hover  { background: var(--green-l); }
+    .btn-submit:active { transform: scale(0.98); }
+
+    /* ── Citation ── */
+    .quote {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 0.75rem;
+      color: #3a4a3a;
+      font-style: italic;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="22" height="22" viewBox="0 0 34 34" fill="none">
+          <path d="M22 9.5C19 11 17 13.8 17 17s2 6 5 7.5C19.8 25.6 17.5 26 15.6 26 9.8 26 5 21.4 5 15.6S9.8 5.2 15.6 5.2c1.9 0 4.2.4 6.4 4.3Z" fill="#C8954B"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <h1>Planning</h1>
+        <span>AN 2026</span>
+      </div>
+    </div>
+
+    <div class="heading">
+      <h2>Bienvenue</h2>
+      <p>Connecte-toi pour accéder à ton espace</p>
+    </div>
+
+    <div class="divider"></div>
+
+    {% if error %}
+    <div class="error-msg">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="field">
+        <label for="username">Nom d'utilisateur</label>
+        <input type="text" id="username" name="username" placeholder="khadidja" required autofocus autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-submit">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Se connecter
+      </button>
+    </form>
+
+    <p class="quote">"Allah n'impose à une âme que selon sa capacité."</p>
+  </div>
+</body>
+</html>

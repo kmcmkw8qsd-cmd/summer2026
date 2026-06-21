@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Deen — Planning 2026{% endblock %}
+{% block page_title %}Deen{% endblock %}
+{% block page_subtitle %}Salat à l'heure, hifd du Coran, lecture quotidienne et un livre en cours.{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">01 — Cinq fois par jour</span>
+      <h3>Salat 3la wa9tiha</h3>
+    </div>
+    <span class="icon-badge">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 4c-2.4 1.2-4 3.7-4 6.5S14.6 15.8 17 17c-1.4.8-3 1.3-4.7 1.3C7 18.3 3 14.3 3 9S7 -0.3 12.3 -0.3"/></svg>
+    </span>
+  </div>
+  <p class="card-note">Coche chaque prière dès qu'elle est accomplie à son heure. La semaine se réinitialise chaque lundi.</p>
+
+  <table class="prayer-table" data-prayertable>
+    <thead>
+      <tr>
+        <th>Prière</th>
+        <th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th><th>D</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for key, label in [('fajr','Fajr'), ('dhuhr','Dhuhr'), ('asr','Asr'), ('maghrib','Maghrib'), ('isha','Isha')] %}
+      <tr>
+        <td>{{ label }}</td>
+        {% for d in range(7) %}
+        <td><span class="dot-check" data-prayer="{{ key }}" data-day="{{ d }}"></span></td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">02 — Hifd</span>
+      <h3>Hifd Juz' Amma</h3>
+    </div>
+    <span class="icon-badge">🕊️</span>
+  </div>
+  <p class="card-note">Les 37 sourates du 30ᵉ Juz', à mémoriser une par une. Clique pour marquer une sourate comme mémorisée.</p>
+
+  <div class="checklist" data-checklist="juzamma">
+    {% for s in [
+      'An-Nas','Al-Falaq','Al-Ikhlas','Al-Masad','An-Nasr','Al-Kafirun','Al-Kawthar','Al-Ma\'un','Quraysh',
+      'Al-Fil','Al-Humazah','Al-\'Asr','At-Takathur','Al-Qari\'ah','Al-\'Adiyat','Az-Zalzalah','Al-Bayyinah',
+      'Al-Qadr','Al-\'Alaq','At-Tin','Al-Inshirah','Ad-Duha','Al-Layl','Ash-Shams','Al-Balad','Al-Fajr',
+      'Al-Ghashiyah','Al-A\'la','At-Tariq','Al-Burooj','Al-Inshiqaq','Al-Mutaffifin','At-Takwir','\'Abasa',
+      'An-Naziat','An-Naba'
+    ] %}
+    <label class="check-item" data-id="{{ s }}">
+      <input type="checkbox">
+      <span class="label">{{ s }}</span>
+    </label>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">03 — 1 hizb par jour</span>
+      <h3>9raat Quran</h3>
+    </div>
+    <span class="icon-badge">📖</span>
+  </div>
+  <p class="card-note">Le Coran compte 60 hizb. En lire un par jour permet de le terminer en deux mois. Clique sur un numéro dès que ce hizb est lu.</p>
+
+  <div class="progress-row" id="hizbProgress" style="margin-bottom:16px;">
+    <div class="progress"><div class="progress-fill"></div></div>
+    <span class="progress-label">0 / 60</span>
+  </div>
+
+  <div class="tile-grid" data-tilegrid="quran_hizb" data-count="60" data-progress-target="hizbProgress"></div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">04 — En cours</span>
+      <h3>Kitab</h3>
+    </div>
+    <span class="icon-badge">📚</span>
+  </div>
+  <p class="card-note">Note le titre du livre que tu lis actuellement, puis suis ta régularité de lecture jour après jour.</p>
+
+  <div class="field" style="max-width:420px;">
+    <label for="bookTitle">Titre du livre</label>
+    <input type="text" id="bookTitle" placeholder="Ex : nom du livre" data-persist="book_title">
+  </div>
+
+  <div class="sub-title">Suivi de lecture (30 jours)</div>
+  <div class="tile-grid" data-tilegrid="book_reading" data-count="30"></div>
+</div>
+
+{% endblock %}

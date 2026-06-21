@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Régime — Planning 2026{% endblock %}
+{% block page_title %}Régime{% endblock %}
+{% block page_subtitle %}Ton journal du jour, à ta façon, et le défi 75 Hard.{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">Au choix</span>
+      <h3>Mon objectif</h3>
+    </div>
+    <span class="icon-badge">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21c4-2.5 7-6 7-10.5A7 7 0 0 0 12 3a7 7 0 0 0-7 7.5C5 15 8 18.5 12 21Z"/></svg>
+    </span>
+  </div>
+  <p class="card-note">Décris ton objectif avec tes propres mots — c'est toi qui choisis le cadre qui te convient.</p>
+  <div class="field" style="max-width:420px;">
+    <label for="goalInput">Mon objectif</label>
+    <input type="text" id="goalInput" placeholder="Ex : mon objectif personnel" data-persist="regime_goal">
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">Jour par jour</span>
+      <h3>Mon journal alimentaire</h3>
+    </div>
+    <span class="icon-badge">📝</span>
+  </div>
+  <p class="card-note">Écris librement ce que tu prévois ou as mangé aujourd'hui — repas, ressenti, ce que tu veux y noter.</p>
+  <textarea id="regimeJournal" rows="6" placeholder="Note libre du jour..." data-persist="regime_journal_today"></textarea>
+  <div class="checklist" data-checklist="regime_today" data-daily="true" style="margin-top:10px;">
+    <label class="check-item" data-id="respected">
+      <input type="checkbox">
+      <span class="label">J'ai suivi mon objectif aujourd'hui</span>
+    </label>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">75 jours</span>
+      <h3>75 Hard</h3>
+    </div>
+    <span class="icon-badge">🔥</span>
+  </div>
+  <p class="card-note">Les 5 règles du jour. Une fois toutes cochées, marque la case du jour correspondant dans la grille ci-dessous.</p>
+
+  <div class="checklist" data-checklist="hard_today" data-daily="true">
+    <label class="check-item" data-id="workout1">
+      <input type="checkbox">
+      <span class="label">1ʳᵉ séance de sport (45 min)</span>
+    </label>
+    <label class="check-item" data-id="workout2">
+      <input type="checkbox">
+      <span class="label">2ᵉ séance de sport en extérieur (45 min)</span>
+    </label>
+    <label class="check-item" data-id="diet">
+      <input type="checkbox">
+      <span class="label">Respect de mon objectif, sans écart</span>
+    </label>
+    <label class="check-item" data-id="water">
+      <input type="checkbox">
+      <span class="label">Objectif d'hydratation atteint</span>
+    </label>
+    <label class="check-item" data-id="reading">
+      <input type="checkbox">
+      <span class="label">10 pages de lecture (développement personnel)</span>
+    </label>
+    <label class="check-item" data-id="photo">
+      <input type="checkbox">
+      <span class="label">Photo de progression prise</span>
+    </label>
+  </div>
+
+  <div class="sub-title">Suivi des 75 jours</div>
+  <div class="progress-row" id="hardProgress" style="margin-bottom:14px;">
+    <div class="progress"><div class="progress-fill"></div></div>
+    <span class="progress-label">0 / 75</span>
+  </div>
+  <div class="tile-grid" data-tilegrid="75hard" data-count="75" data-progress-target="hardProgress"></div>
+</div>
+
+{% endblock %}

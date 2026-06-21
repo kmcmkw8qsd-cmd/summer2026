@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Homecare — Planning 2026{% endblock %}
+{% block page_title %}Homecare{% endblock %}
+{% block page_subtitle %}1h30 par jour pour un espace de vie qui te fait du bien.{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">90 minutes / jour</span>
+      <h3>Mes tâches du jour</h3>
+    </div>
+    <span class="icon-badge">🏠</span>
+  </div>
+  <p class="card-note">Indique le temps passé (en minutes) sur chaque tâche réalisée aujourd'hui. Le total se calcule automatiquement.</p>
+
+  <div class="checklist" id="homecareList" data-checklist="homecare_done" data-daily="true">
+    <label class="check-item" data-id="dishes">
+      <input type="checkbox">
+      <span class="label">Vaisselle</span>
+      <input type="number" class="home-minutes" data-task="dishes" min="0" placeholder="min" style="width:70px;">
+    </label>
+    <label class="check-item" data-id="laundry">
+      <input type="checkbox">
+      <span class="label">Linge</span>
+      <input type="number" class="home-minutes" data-task="laundry" min="0" placeholder="min" style="width:70px;">
+    </label>
+    <label class="check-item" data-id="tidying">
+      <input type="checkbox">
+      <span class="label">Rangement</span>
+      <input type="number" class="home-minutes" data-task="tidying" min="0" placeholder="min" style="width:70px;">
+    </label>
+    <label class="check-item" data-id="cleaning">
+      <input type="checkbox">
+      <span class="label">Nettoyage (sols, surfaces)</span>
+      <input type="number" class="home-minutes" data-task="cleaning" min="0" placeholder="min" style="width:70px;">
+    </label>
+    <label class="check-item" data-id="plants">
+      <input type="checkbox">
+      <span class="label">Plantes / aération</span>
+      <input type="number" class="home-minutes" data-task="plants" min="0" placeholder="min" style="width:70px;">
+    </label>
+    <label class="check-item" data-id="organizing">
+      <input type="checkbox">
+      <span class="label">Organisation / tri</span>
+      <input type="number" class="home-minutes" data-task="organizing" min="0" placeholder="min" style="width:70px;">
+    </label>
+  </div>
+
+  <div class="sub-title">Total du jour</div>
+  <div class="progress-row" id="homeProgress">
+    <div class="progress"><div class="progress-fill"></div></div>
+    <span class="progress-label">0 / 90 min</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">30 jours</span>
+      <h3>Régularité homecare</h3>
+    </div>
+  </div>
+  <div class="tile-grid" data-tilegrid="homecare_streak" data-count="30"></div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', ()=>{
+  const todayKey = new Date().toISOString().slice(0,10);
+  const storageKey = 'pl_homecare_' + todayKey;
+  const state = JSON.parse(localStorage.getItem(storageKey) || '{}');
+  const goal = 90;
+
+  function updateTotal(){
+    let total = 0;
+    document.querySelectorAll('.home-minutes').forEach(inp=>{
+      total += parseInt(inp.value || '0', 10);
+    });
+    const wrap = document.getElementById('homeProgress');
+    const pct = Math.min(100, Math.round((total/goal)*100));
+    wrap.querySelector('.progress-fill').style.width = pct + '%';
+    wrap.querySelector('.progress-label').textContent = `${total} / ${goal} min`;
+  }
+
+  document.querySelectorAll('.home-minutes').forEach(inp=>{
+    const task = inp.getAttribute('data-task');
+    if(typeof state[task] === 'number') inp.value = state[task];
+    inp.addEventListener('input', ()=>{
+      state[task] = parseInt(inp.value || '0', 10);
+      localStorage.setItem(storageKey, JSON.stringify(state));
+      updateTotal();
+      document.dispatchEvent(new CustomEvent('pl:update'));
+    });
+  });
+  updateTotal();
+});
+</script>
+{% endblock %}

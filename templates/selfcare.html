@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Selfcare — Planning 2026{% endblock %}
+{% block page_title %}Selfcare{% endblock %}
+{% block page_subtitle %}Un moment pour toi, chaque jour — corps, esprit, humeur.{% endblock %}
+
+{% block content %}
+
+<div class="card-row">
+
+  <div class="card" style="flex:1; min-width:300px;">
+    <div class="card-head">
+      <div>
+        <span class="eyebrow">Aujourd'hui</span>
+        <h3>Ma routine</h3>
+      </div>
+      <span class="icon-badge">✨</span>
+    </div>
+    <p class="card-note">Coche ce que tu as fait pour toi aujourd'hui — ajoute ou modifie selon ce qui te fait du bien.</p>
+    <div class="checklist" data-checklist="selfcare" data-daily="true">
+      <label class="check-item" data-id="skincare">
+        <input type="checkbox">
+        <span class="label">Routine de soin du visage</span>
+      </label>
+      <label class="check-item" data-id="journal">
+        <input type="checkbox">
+        <span class="label">Journaling / gratitude</span>
+      </label>
+      <label class="check-item" data-id="breathing">
+        <input type="checkbox">
+        <span class="label">Respiration / méditation</span>
+      </label>
+      <label class="check-item" data-id="screentime">
+        <input type="checkbox">
+        <span class="label">Pause écran respectée</span>
+      </label>
+      <label class="check-item" data-id="sleep">
+        <input type="checkbox">
+        <span class="label">Coucher à l'heure prévue</span>
+      </label>
+      <label class="check-item" data-id="metime">
+        <input type="checkbox">
+        <span class="label">Un moment juste pour moi</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="card" style="flex:1; min-width:300px;">
+    <div class="card-head">
+      <div>
+        <span class="eyebrow">Ressenti</span>
+        <h3>Humeur du jour</h3>
+      </div>
+      <span class="icon-badge">🌤️</span>
+    </div>
+    <p class="card-note">Choisis l'humeur qui correspond le mieux à ta journée.</p>
+    <div class="pill-row" id="moodRow">
+      <span class="pill" data-mood="😄">😄 Très bien</span>
+      <span class="pill" data-mood="🙂">🙂 Bien</span>
+      <span class="pill" data-mood="😐">😐 Neutre</span>
+      <span class="pill" data-mood="😔">😔 Fatiguée</span>
+      <span class="pill" data-mood="😣">😣 Difficile</span>
+    </div>
+    <div class="field" style="margin-top:18px;">
+      <label for="moodNote">Une ligne sur ma journée</label>
+      <textarea id="moodNote" rows="3" placeholder="Ce que je retiens d'aujourd'hui..." data-persist="mood_note_today"></textarea>
+    </div>
+  </div>
+
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">30 jours</span>
+      <h3>Régularité selfcare</h3>
+    </div>
+  </div>
+  <p class="card-note">Un coup d'œil sur ta constance ce mois-ci.</p>
+  <div class="tile-grid" data-tilegrid="selfcare_streak" data-count="30"></div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const key = 'pl_mood_' + new Date().toISOString().slice(0,10);
+    const saved = localStorage.getItem(key);
+    document.querySelectorAll('#moodRow .pill').forEach(p=>{
+      if(saved && p.getAttribute('data-mood') === saved) p.classList.add('on');
+      p.addEventListener('click', ()=>{
+        document.querySelectorAll('#moodRow .pill').forEach(x=>x.classList.remove('on'));
+        p.classList.add('on');
+        localStorage.setItem(key, p.getAttribute('data-mood'));
+      });
+    });
+  });
+</script>
+{% endblock %}
