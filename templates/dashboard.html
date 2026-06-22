@@ -138,8 +138,7 @@
 {% block extra_js %}
 <script>
 /* ══════════════════════════════════════════════
-   DASHBOARD — lit depuis l'API serveur
-   (plus de localStorage)
+   DASHBOARD — 100% API serveur
    ══════════════════════════════════════════════ */
 
 function fmtDate(d) {
@@ -157,52 +156,82 @@ function getWeekKey(d) {
 const TODAY    = new Date(); TODAY.setHours(0,0,0,0);
 const DATE_KEY = fmtDate(TODAY);
 const WEEK_KEY = getWeekKey(TODAY);
-const DAY_IDX  = (TODAY.getDay()+6)%7;
+const DAY_IDX  = (TODAY.getDay()+6)%7; // Lun=0
 
-/* Calcule un score 0-100 depuis les données API */
-function computeScore(data) {
+/* ── Score d'un jour à partir des données API ──
+   dayIdx = index du jour dans la semaine (0=Lun … 6=Dim)
+   CORRECTION : on passe toujours le bon index selon le jour calculé */
+function computeScore(data, dayIdx) {
   if (!data) return 0;
+  const idx = (dayIdx !== undefined) ? dayIdx : DAY_IDX;
   const PRAYERS = ['fajr','dhuhr','asr','maghrib','isha'];
-  const salatDone = PRAYERS.filter(p => data.salat && data.salat[`${p}_${DAY_IDX}`]).length;
-  const deenS  = (salatDone / 5) * 100;
-  const steps  = data.steps  || 0;
-  const water  = data.water  || 0;
+
+  /* Salat — clé : "fajr_0", "dhuhr_0" etc. avec l'index du jour */
+  const salatDone = PRAYERS.filter(p =>
+    data.salat && data.salat[`${p}_${idx}`]
+  ).length;
+  const deenS = (salatDone / 5) * 100;
+
+  /* Sport */
+  const steps = data.steps || 0;
+  const water = data.water || 0;
   const sportS = (
     (steps >= 8000 ? 1 : steps / 8000) * 0.35 +
     (water >= 8    ? 1 : water / 12)   * 0.35 +
-    0.3 // stretch difficile à mesurer sans données hebdo complètes
+    0.3
   ) * 100;
-  const regOk   = (data.regime_checks && data.regime_checks['respected']) ? 100 : 0;
+
+  /* Régime */
+  const regOk = (data.regime_checks && data.regime_checks['respected']) ? 100 : 0;
+
+  /* Learning */
   const lcChecks = data.learning_checks || {};
-  const lcS     = Math.min(Object.values(lcChecks).filter(Boolean).length / 3, 1) * 100;
+  const lcS = Math.min(Object.values(lcChecks).filter(Boolean).length / 3, 1) * 100;
+
+  /* Selfcare */
   const scChecks = data.selfcare_checks || {};
-  const scS     = Math.min(Object.values(scChecks).filter(Boolean).length / 4, 1) * 100;
-  const hcMin   = data.homecare_min || 0;
-  const hcS     = Math.min(hcMin / 90, 1) * 100;
+  const scS = Math.min(Object.values(scChecks).filter(Boolean).length / 4, 1) * 100;
+
+  /* Homecare */
+  const hcMin = data.homecare_min || 0;
+  const hcS   = Math.min(hcMin / 90, 1) * 100;
+
   return Math.round((deenS + sportS + regOk + lcS + scS + hcS) / 6);
 }
 
-async function renderDashboard() {
-  /* ── Données du jour ── */
-  let todayData = {};
+/* Cache pour éviter de refetcher les mêmes dates */
+const dataCache = {};
+async function fetchDay(dateStr) {
+  if (dataCache[dateStr]) return dataCache[dateStr];
   try {
-    const res   = await fetch(`/api/dashboard/${DATE_KEY}`);
-    todayData   = await res.json();
-  } catch(e) { console.error('Dashboard API error:', e); }
+    const res  = await fetch(`/api/dashboard/${dateStr}`);
+    const data = await res.json();
+    dataCache[dateStr] = data;
+    return data;
+  } catch(e) { return {}; }
+}
 
-  const PRAYERS = ['fajr','dhuhr','asr','maghrib','isha'];
-  const salatDone = PRAYERS.filter(p => todayData.salat && todayData.salat[`${p}_${DAY_IDX}`]).length;
+async function renderDashboard() {
+
+  /* ── Données du jour ── */
+  const todayData = await fetchDay(DATE_KEY);
+
+  const PRAYERS   = ['fajr','dhuhr','asr','maghrib','isha'];
+  /* CORRECTION : utilise DAY_IDX (index du LUNDI=0) pour lire le bon jour */
+  const salatDone = PRAYERS.filter(p =>
+    todayData.salat && todayData.salat[`${p}_${DAY_IDX}`]
+  ).length;
 
   /* ── Cartes stats ── */
   const STAT_DEFS = [
-    { label:'Salat',        icon:'🕌', val:salatDone,                                    max:5  },
-    { label:'Eau (verres)', icon:'💧', val:todayData.water || 0,                         max:12 },
-    { label:'Pas',          icon:'👟', val:todayData.steps || 0,                         max:10000, big:true },
-    { label:'Gym semaine',  icon:'🏋️', val:(todayData.gym_days||[]).length,              max:5  },
-    { label:'Selfcare',     icon:'✨', val:Object.values(todayData.selfcare_checks||{}).filter(Boolean).length, max:6 },
-    { label:'Homecare',     icon:'🏠', val:todayData.homecare_min || 0,                  max:90, unit:'min' },
-    { label:'Learning',     icon:'🌐', val:Object.values(todayData.learning_checks||{}).filter(Boolean).length, max:3 },
-    { label:'Régime',       icon:'🥗', val:(todayData.regime_checks||{})['respected']?1:0, max:1, unit:'/ jour' },
+    { label:'Salat',        icon:'🕌', val:salatDone,                                                              max:5  },
+    { label:'Eau (verres)', icon:'💧', val:todayData.water || 0,                                                   max:12 },
+    { label:'Pas',          icon:'👟', val:todayData.steps || 0,                                                   max:10000, big:true },
+    { label:'Gym semaine',  icon:'🏋️', val:(todayData.gym_days||[]).length,                                        max:5  },
+    { label:'Selfcare',     icon:'✨', val:Object.values(todayData.selfcare_checks||{}).filter(Boolean).length,    max:6  },
+    { label:'Homecare',     icon:'🏠', val:todayData.homecare_min || 0,                                            max:90, unit:'min' },
+    { label:'Learning',     icon:'🌐', val:Object.values(todayData.learning_checks||{}).filter(Boolean).length,    max:3  },
+    { label:'Régime',       icon:'🥗', val:(todayData.regime_checks||{})['respected'] ? 1 : 0,                    max:1, unit:'/ jour' },
   ];
 
   const statsGrid = document.getElementById('db-stats-grid');
@@ -218,29 +247,28 @@ async function renderDashboard() {
         <span class="stat-card-label">${s.label}</span>
         <span class="stat-card-ico">${s.icon}</span>
       </div>
-      <div class="stat-card-val">${dV}<small>/${dM}${s.unit ? ' ' + s.unit : ''}</small></div>
+      <div class="stat-card-val">${dV}<small>/${dM}${s.unit ? ' '+s.unit : ''}</small></div>
       <div class="stat-bar"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
       <div class="stat-footer"><span>Objectif jour</span><span class="stat-pct">${pct}%</span></div>`;
     statsGrid.appendChild(el);
   });
 
-  /* ── Vue semaine (score par jour via API) ── */
-  const DAY_FR = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  /* ── Vue semaine ── */
+  const DAY_FR   = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
   const weekGrid = document.getElementById('db-week-grid');
   weekGrid.innerHTML = '';
   const monday = new Date(TODAY);
   monday.setDate(TODAY.getDate() - DAY_IDX);
 
   for (let i = 0; i < 7; i++) {
-    const d = new Date(monday); d.setDate(monday.getDate() + i);
+    const d       = new Date(monday); d.setDate(monday.getDate() + i);
     const isFuture = d > TODAY;
     const isToday  = d.getTime() === TODAY.getTime();
     let score = null;
     if (!isFuture) {
-      try {
-        const r = await fetch(`/api/dashboard/${fmtDate(d)}`);
-        score = computeScore(await r.json());
-      } catch(e) { score = 0; }
+      const dayData = await fetchDay(fmtDate(d));
+      /* CORRECTION : passe i (index du jour dans la semaine) */
+      score = computeScore(dayData, i);
     }
     const el = document.createElement('div');
     el.className = 'week-day' + (isToday ? ' today-col' : '');
@@ -266,9 +294,10 @@ async function renderDashboard() {
   let totalDays = 0, activeDays = 0, sumScore = 0, streak = 0, curStreak = 0;
 
   for (let d = new Date(START); d <= END; d.setDate(d.getDate() + 1)) {
-    const key      = fmtDate(new Date(d));
-    const isFuture = new Date(d) > TODAY;
-    const isToday  = new Date(d).getTime() === TODAY.getTime();
+    const cur      = new Date(d);
+    const key      = fmtDate(cur);
+    const isFuture = cur > TODAY;
+    const isToday  = cur.getTime() === TODAY.getTime();
     const cell     = document.createElement('div');
     cell.className = 'cal-day';
     cell.title     = key;
@@ -276,30 +305,25 @@ async function renderDashboard() {
 
     if (isFuture) {
       cell.classList.add('cal-future');
-      cell.textContent = new Date(d).getDate();
+      cell.textContent = cur.getDate();
     } else {
       totalDays++;
-      let sc = 0;
-      if (key === DATE_KEY) {
-        sc = computeScore(todayData);
-      } else {
-        try {
-          const r = await fetch(`/api/dashboard/${key}`);
-          sc = computeScore(await r.json());
-        } catch(e) { sc = 0; }
-      }
+      const dayData = await fetchDay(key);
+      /* CORRECTION : calcule l'index du jour dans la semaine pour ce jour précis */
+      const thisIdx = (cur.getDay() + 6) % 7;
+      const sc      = computeScore(dayData, thisIdx);
       sumScore += sc;
       const lv = sc >= 90 ? 5 : sc >= 70 ? 4 : sc >= 45 ? 3 : sc >= 25 ? 2 : sc > 0 ? 1 : 0;
       cell.classList.add('lv' + lv);
-      cell.textContent = new Date(d).getDate();
+      cell.textContent = cur.getDate();
       if (lv > 0) { activeDays++; curStreak++; if (curStreak > streak) streak = curStreak; }
       else curStreak = 0;
     }
     calGrid.appendChild(cell);
   }
 
-  /* ── Hero score ── */
-  const todayS     = computeScore(todayData);
+  /* ── Hero ── */
+  const todayS      = computeScore(todayData, DAY_IDX);
   const globalScore = totalDays > 0 ? Math.round(sumScore / totalDays) : 0;
 
   document.getElementById('db-global-score').innerHTML = `${todayS}<span> / 100</span>`;
@@ -320,17 +344,20 @@ async function renderDashboard() {
   /* ── Catégories ── */
   const CAT_DEFS = [
     { name:'Deen',     icon:'🕌', desc:'Salat · Coran',
-      pct: Math.round(salatDone/5*100) },
+      pct: Math.round(salatDone / 5 * 100) },
     { name:'Sport',    icon:'🏋️', desc:'Pas · Eau · Gym',
-      pct: Math.round(Math.min(((todayData.steps||0)>=8000?1:(todayData.steps||0)/8000)*0.35+((todayData.water||0)>=8?1:(todayData.water||0)/12)*0.35+0.3,1)*100) },
+      pct: Math.round(Math.min(
+        ((todayData.steps||0) >= 8000 ? 1 : (todayData.steps||0) / 8000) * 0.35 +
+        ((todayData.water||0) >= 8    ? 1 : (todayData.water||0) / 12)   * 0.35 +
+        0.3, 1) * 100) },
     { name:'Régime',   icon:'🥗', desc:'Objectif alimentaire',
-      pct: (todayData.regime_checks||{})['respected']?100:0 },
+      pct: (todayData.regime_checks||{})['respected'] ? 100 : 0 },
     { name:'Learning', icon:'🌐', desc:'Langue · Activité · Culture',
-      pct: Math.round(Math.min(Object.values(todayData.learning_checks||{}).filter(Boolean).length/3,1)*100) },
+      pct: Math.round(Math.min(Object.values(todayData.learning_checks||{}).filter(Boolean).length / 3, 1) * 100) },
     { name:'Selfcare', icon:'✨', desc:'Soin · Journal · Humeur',
-      pct: Math.round(Math.min(Object.values(todayData.selfcare_checks||{}).filter(Boolean).length/4,1)*100) },
+      pct: Math.round(Math.min(Object.values(todayData.selfcare_checks||{}).filter(Boolean).length / 4, 1) * 100) },
     { name:'Homecare', icon:'🏠', desc:'Tâches quotidiennes · 90 min',
-      pct: Math.round(Math.min((todayData.homecare_min||0)/90,1)*100) },
+      pct: Math.round(Math.min((todayData.homecare_min||0) / 90, 1) * 100) },
   ];
 
   const catsGrid = document.getElementById('db-cats-grid');
@@ -355,6 +382,10 @@ async function renderDashboard() {
 }
 
 document.addEventListener('DOMContentLoaded', renderDashboard);
-document.addEventListener('pl:update', renderDashboard);
+document.addEventListener('pl:update', () => {
+  /* Vide le cache pour forcer rechargement */
+  Object.keys(dataCache).forEach(k => delete dataCache[k]);
+  renderDashboard();
+});
 </script>
 {% endblock %}

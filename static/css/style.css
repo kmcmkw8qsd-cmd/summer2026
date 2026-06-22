@@ -795,3 +795,97 @@ textarea{ resize:vertical; min-height:90px; font-family:var(--font-body); line-h
 .logout-btn:hover {
   background: rgba(224, 92, 92, 0.1);
 }
+
+/* ---------- Sidebar footer: profile card ---------- */
+.sidebar-footer {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: var(--radius-m);
+  background: rgba(239,233,220,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sidebar-profile-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-s);
+  background: rgba(239,233,220,0.09);
+  text-decoration: none;
+  transition: background 0.15s ease;
+  margin-bottom: 10px;
+}
+
+.sidebar-profile-btn:hover {
+  background: rgba(239,233,220,0.15);
+}
+
+.sidebar-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--primary-d);
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.sidebar-profile-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-profile-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #FAF6EE;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.sidebar-profile-sub {
+  font-size: 0.76rem;
+  color: #C9C0AC;
+  margin-top: 1px;
+}
+
+.sidebar-footer p.sidebar-quote {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #C9C0AC;
+  margin: 0 0 10px 2px;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e05c5c;
+  font-size: 0.82rem;
+  text-decoration: none;
+  padding: 7px 10px;
+  border-radius: 8px;
+  transition: background 0.2s;
+  margin-top: 0;
+}
+
+.logout-btn:hover {
+  background: rgba(224, 92, 92, 0.12);
+}

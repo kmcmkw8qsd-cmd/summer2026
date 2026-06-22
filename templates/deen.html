@@ -17,7 +17,7 @@
   </div>
   <p class="card-note">Coche chaque prière dès qu'elle est accomplie à son heure. La semaine se réinitialise chaque lundi.</p>
 
-  <table class="prayer-table" data-prayertable>
+  <table class="prayer-table">
     <thead>
       <tr>
         <th>Prière</th>
@@ -47,7 +47,7 @@
   </div>
   <p class="card-note">Les 37 sourates du 30ᵉ Juz', à mémoriser une par une. Clique pour marquer une sourate comme mémorisée.</p>
 
-  <div class="checklist" data-checklist="juzamma">
+  <div class="checklist" id="juzammaList">
     {% for s in [
       'An-Nas','Al-Falaq','Al-Ikhlas','Al-Masad','An-Nasr','Al-Kafirun','Al-Kawthar','Al-Ma\'un','Quraysh',
       'Al-Fil','Al-Humazah','Al-\'Asr','At-Takathur','Al-Qari\'ah','Al-\'Adiyat','Az-Zalzalah','Al-Bayyinah',
@@ -71,14 +71,13 @@
     </div>
     <span class="icon-badge">📖</span>
   </div>
-  <p class="card-note">Le Coran compte 60 hizb. En lire un par jour permet de le terminer en deux mois. Clique sur un numéro dès que ce hizb est lu.</p>
+  <p class="card-note">Le Coran compte 60 hizb. En lire un par jour permet de le terminer en deux mois.</p>
 
   <div class="progress-row" id="hizbProgress" style="margin-bottom:16px;">
     <div class="progress"><div class="progress-fill"></div></div>
     <span class="progress-label">0 / 60</span>
   </div>
-
-  <div class="tile-grid" data-tilegrid="quran_hizb" data-count="60" data-progress-target="hizbProgress"></div>
+  <div class="tile-grid" id="hizbGrid"></div>
 </div>
 
 <div class="card">
@@ -97,7 +96,7 @@
   </div>
 
   <div class="sub-title">Suivi de lecture (30 jours)</div>
-  <div class="tile-grid" data-tilegrid="book_reading" data-count="30"></div>
+  <div class="tile-grid" id="bookGrid"></div>
 </div>
 
 {% endblock %}
@@ -105,7 +104,7 @@
 {% block extra_js %}
 <script>
 /* ══════════════════════════════════════════════
-   DEEN — synchronisation via API serveur
+   DEEN — 100% API serveur (synchronisé)
    ══════════════════════════════════════════════ */
 
 function getWeekKey(d) {
@@ -117,23 +116,21 @@ function getWeekKey(d) {
 
 const TODAY    = new Date(); TODAY.setHours(0,0,0,0);
 const WEEK_KEY = getWeekKey(TODAY);
+const DAY_IDX  = (TODAY.getDay()+6)%7;
 
-// État local (mis à jour depuis serveur)
-let salatState  = {};
+let salatState   = {};
 let persistState = { juzamma: {}, quran_hizb: {}, book_title: '', book_reading: {} };
 
-/* ── Charger depuis serveur ── */
+/* ════════ CHARGEMENT ════════ */
 async function loadDeen() {
   try {
     const res  = await fetch(`/api/deen/${WEEK_KEY}`);
     const data = await res.json();
-
-    salatState          = data.salat        || {};
-    persistState.juzamma     = data.juzamma      || {};
-    persistState.quran_hizb  = data.quran_hizb   || {};
-    persistState.book_title  = data.book_title   || '';
-    persistState.book_reading= data.book_reading || {};
-
+    salatState                = data.salat         || {};
+    persistState.juzamma      = data.juzamma       || {};
+    persistState.quran_hizb   = data.quran_hizb    || {};
+    persistState.book_title   = data.book_title    || '';
+    persistState.book_reading = data.book_reading  || {};
     renderSalat();
     renderPersist();
   } catch(e) {
@@ -141,7 +138,7 @@ async function loadDeen() {
   }
 }
 
-/* ── Sauvegarder salat ── */
+/* ════════ SAUVEGARDE ════════ */
 async function saveSalat() {
   await fetch('/api/deen/salat', {
     method: 'POST',
@@ -151,104 +148,120 @@ async function saveSalat() {
   document.dispatchEvent(new CustomEvent('pl:update'));
 }
 
-/* ── Sauvegarder données persistantes ── */
 async function savePersist() {
   await fetch('/api/deen/persist', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(persistState)
   });
+  document.dispatchEvent(new CustomEvent('pl:update'));
 }
 
-/* ── Rendu tableau salat ── */
+/* ════════ RENDU SALAT ════════ */
 function renderSalat() {
   document.querySelectorAll('.dot-check').forEach(dot => {
     const prayer = dot.dataset.prayer;
     const day    = parseInt(dot.dataset.day);
     const key    = `${prayer}_${day}`;
-    dot.classList.toggle('on', !!salatState[key]);
+    const isToday = day === DAY_IDX;
+
+    /* ← CORRECTION : utilise .done comme le CSS */
+    dot.classList.toggle('done', !!salatState[key]);
+    if (isToday) dot.style.boxShadow = '0 0 0 2px var(--accent)';
+
     dot.onclick = () => {
       salatState[key] = !salatState[key];
-      dot.classList.toggle('on', salatState[key]);
+      dot.classList.toggle('done', salatState[key]);
       saveSalat();
     };
   });
 }
 
-/* ── Rendu données persistantes (juzamma, hizb, livre) ── */
+/* ════════ RENDU PERSISTANT ════════ */
 function renderPersist() {
-  // Juz' Amma
-  document.querySelectorAll('[data-checklist="juzamma"] .check-item').forEach(item => {
+  renderJuzAmma();
+  renderHizb();
+  renderBook();
+  renderBookTitle();
+}
+
+/* ── Juz' Amma ── */
+function renderJuzAmma() {
+  document.querySelectorAll('#juzammaList .check-item').forEach(item => {
     const id  = item.dataset.id;
     const chk = item.querySelector('input[type="checkbox"]');
     chk.checked = !!persistState.juzamma[id];
+    item.classList.toggle('done', chk.checked);
     chk.onchange = () => {
       persistState.juzamma[id] = chk.checked;
+      item.classList.toggle('done', chk.checked);
       savePersist();
     };
   });
+}
 
-  // Quran Hizb tile-grid
-  const hizbGrid = document.querySelector('[data-tilegrid="quran_hizb"]');
-  if (hizbGrid) {
-    hizbGrid.innerHTML = '';
-    const count = parseInt(hizbGrid.dataset.count || '60');
-    for (let i = 1; i <= count; i++) {
-      const tile = document.createElement('span');
-      tile.className = 'tile' + (persistState.quran_hizb[i] ? ' on' : '');
-      tile.textContent = i;
-      tile.onclick = () => {
-        persistState.quran_hizb[i] = !persistState.quran_hizb[i];
-        tile.classList.toggle('on', persistState.quran_hizb[i]);
-        updateHizbProgress();
-        savePersist();
-      };
-      hizbGrid.appendChild(tile);
-    }
-    updateHizbProgress();
-  }
-
-  // Book reading tile-grid
-  const bookGrid = document.querySelector('[data-tilegrid="book_reading"]');
-  if (bookGrid) {
-    bookGrid.innerHTML = '';
-    const count = parseInt(bookGrid.dataset.count || '30');
-    for (let i = 1; i <= count; i++) {
-      const tile = document.createElement('span');
-      tile.className = 'tile' + (persistState.book_reading[i] ? ' on' : '');
-      tile.textContent = i;
-      tile.onclick = () => {
-        persistState.book_reading[i] = !persistState.book_reading[i];
-        tile.classList.toggle('on', persistState.book_reading[i]);
-        savePersist();
-      };
-      bookGrid.appendChild(tile);
-    }
-  }
-
-  // Titre du livre
-  const bookInput = document.getElementById('bookTitle');
-  if (bookInput) {
-    bookInput.value = persistState.book_title || '';
-    bookInput.oninput = () => {
-      persistState.book_title = bookInput.value;
-      clearTimeout(bookInput._t);
-      bookInput._t = setTimeout(savePersist, 800);
+/* ── Hizb Quran ── */
+function renderHizb() {
+  const grid = document.getElementById('hizbGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 1; i <= 60; i++) {
+    const tile = document.createElement('span');
+    /* ← CORRECTION : utilise .done comme le CSS */
+    tile.className = 'tile' + (persistState.quran_hizb[i] ? ' done' : '');
+    tile.textContent = i;
+    tile.onclick = () => {
+      persistState.quran_hizb[i] = !persistState.quran_hizb[i];
+      tile.classList.toggle('done', persistState.quran_hizb[i]);
+      updateHizbProgress();
+      savePersist();
     };
+    grid.appendChild(tile);
   }
+  updateHizbProgress();
 }
 
 function updateHizbProgress() {
-  const done  = Object.values(persistState.quran_hizb).filter(Boolean).length;
-  const total = 60;
-  const pct   = Math.round((done / total) * 100);
-  const wrap  = document.getElementById('hizbProgress');
+  const done = Object.values(persistState.quran_hizb).filter(Boolean).length;
+  const wrap = document.getElementById('hizbProgress');
   if (wrap) {
-    wrap.querySelector('.progress-fill').style.width  = pct + '%';
-    wrap.querySelector('.progress-label').textContent = `${done} / ${total}`;
+    wrap.querySelector('.progress-fill').style.width  = Math.round(done/60*100) + '%';
+    wrap.querySelector('.progress-label').textContent = `${done} / 60`;
   }
 }
 
+/* ── Livre (30 jours) ── */
+function renderBook() {
+  const grid = document.getElementById('bookGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 1; i <= 30; i++) {
+    const tile = document.createElement('span');
+    /* ← CORRECTION : utilise .done comme le CSS */
+    tile.className = 'tile' + (persistState.book_reading[i] ? ' done' : '');
+    tile.textContent = i;
+    tile.onclick = () => {
+      persistState.book_reading[i] = !persistState.book_reading[i];
+      tile.classList.toggle('done', persistState.book_reading[i]);
+      savePersist();
+    };
+    grid.appendChild(tile);
+  }
+}
+
+/* ── Titre livre ── */
+function renderBookTitle() {
+  const inp = document.getElementById('bookTitle');
+  if (!inp) return;
+  inp.value = persistState.book_title || '';
+  inp.oninput = () => {
+    persistState.book_title = inp.value;
+    clearTimeout(inp._t);
+    inp._t = setTimeout(savePersist, 800);
+  };
+}
+
+/* ════════ BOOT ════════ */
 document.addEventListener('DOMContentLoaded', loadDeen);
 </script>
 {% endblock %}

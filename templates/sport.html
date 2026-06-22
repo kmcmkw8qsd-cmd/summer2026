@@ -3,117 +3,339 @@
 {% block page_title %}Sport{% endblock %}
 {% block page_subtitle %}Étirements, pas, gym, hydratation et natation — la routine du corps.{% endblock %}
 
+{% block extra_css %}
+<style>
+.sport-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.sport-grid .full { grid-column: 1 / -1; }
+@media (max-width: 700px) {
+  .sport-grid { grid-template-columns: 1fr; }
+  .sport-grid .full { grid-column: 1; }
+}
+.sport-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  padding: 24px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.sport-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sport-card-head .left { flex: 1; }
+.sport-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.sport-card-head h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-d);
+  line-height: 1.2;
+}
+.sport-icon {
+  width: 40px; height: 40px;
+  border-radius: 11px;
+  background: var(--accent-pale);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.sport-note {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Checkbox ── */
+.sport-check-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  user-select: none;
+}
+.sport-check-wrap:hover { border-color: var(--accent); background: var(--accent-pale); }
+.sport-check-wrap.done { border-color: var(--primary-l); background: rgba(74,115,97,.08); }
+.sport-checkbox {
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  border: 2px solid var(--line);
+  background: var(--surface-2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all .2s;
+}
+.sport-check-wrap.done .sport-checkbox { background: var(--primary-l); border-color: var(--primary-l); }
+.sport-checkbox svg { display: none; }
+.sport-check-wrap.done .sport-checkbox svg { display: block; }
+.sport-check-label { font-size: 0.88rem; font-weight: 500; color: var(--primary-d); }
+.sport-check-wrap.done .sport-check-label { text-decoration: line-through; color: var(--ink-soft); }
+
+/* ── Semaine ── */
+.week-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+.week-tiles { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.week-tile {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-soft);
+  transition: all .2s;
+}
+.week-tile.done { background: var(--primary-l); border-color: var(--primary-l); color: #fff; }
+.week-tile.today { border-color: var(--accent); border-width: 2px; }
+
+/* ── Steps ── */
+.steps-input-wrap { position: relative; }
+.steps-input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px 12px 44px;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--primary-d);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  -moz-appearance: textfield;
+}
+.steps-input::-webkit-outer-spin-button,
+.steps-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.steps-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-pale); }
+.steps-ico { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 1rem; pointer-events: none; }
+.steps-progress { display: flex; align-items: center; gap: 12px; }
+.steps-bar { flex: 1; height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
+.steps-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--primary-l), var(--accent)); width: 0%; transition: width .6s cubic-bezier(.4,0,.2,1); }
+.steps-pct { font-family: var(--font-mono); font-size: 0.72rem; color: var(--primary); font-weight: 600; white-space: nowrap; min-width: 60px; text-align: right; }
+
+/* ── Gym pills ── */
+.gym-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.gym-pill {
+  padding: 8px 16px;
+  border-radius: 30px;
+  border: 1.5px solid var(--line);
+  background: var(--surface-2);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all .18s;
+  user-select: none;
+  font-family: var(--font-mono);
+}
+.gym-pill:hover { border-color: var(--accent); color: var(--accent); }
+.gym-pill.on { background: var(--primary-l); border-color: var(--primary-l); color: #fff; }
+.gym-counter {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  padding: 8px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: inline-block;
+}
+
+/* ── Eau — verres qui se remplissent ── */
+.water-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+@media (max-width: 500px) { .water-grid { grid-template-columns: repeat(4, 1fr); } }
+.water-cup {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+  gap: 4px;
+}
+.water-cup:hover { border-color: #74b3f0; transform: translateY(-2px); }
+.water-cup-fill {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 0%;
+  background: linear-gradient(180deg, #a8d8f0 0%, #5ba8e0 100%);
+  transition: height .4s cubic-bezier(.4,0,.2,1);
+  border-radius: 0 0 10px 10px;
+}
+.water-cup.on .water-cup-fill { height: 100%; }
+.water-cup-icon { position: relative; z-index: 1; width: 22px; height: 22px; transition: all .2s; }
+.water-cup-icon path { stroke: var(--ink-soft); transition: stroke .2s; }
+.water-cup.on .water-cup-icon path { stroke: #fff; }
+.water-cup-num { position: relative; z-index: 1; font-family: var(--font-mono); font-size: 0.6rem; color: var(--ink-soft); transition: color .2s; }
+.water-cup.on .water-cup-num { color: rgba(255,255,255,.85); }
+.water-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.water-total { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; color: var(--primary-d); line-height: 1; }
+.water-total span { font-family: var(--font-body); font-size: 0.8rem; color: var(--ink-soft); font-weight: 400; margin-left: 4px; }
+.water-ml { font-size: 0.78rem; color: var(--ink-soft); }
+.water-prog-wrap { flex: 1; }
+.water-prog { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; border: 1px solid var(--line); margin-bottom: 4px; }
+.water-prog-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #74b3f0, #3a8fd1); width: 0%; transition: width .5s cubic-bezier(.4,0,.2,1); }
+</style>
+{% endblock %}
+
 {% block content %}
+<div class="sport-grid">
 
-<div class="card-row">
-
-  <div class="card" style="flex:1; min-width:300px;">
-    <div class="card-head">
-      <div>
-        <span class="eyebrow">Le matin</span>
+  <!-- ① Stretching -->
+  <div class="sport-card">
+    <div class="sport-card-head">
+      <div class="left">
+        <p class="sport-eyebrow">Le matin</p>
         <h3>Stretching — 5 min</h3>
       </div>
-      <span class="icon-badge">🌅</span>
+      <div class="sport-icon">🌅</div>
     </div>
-    <p class="card-note">Quelques minutes d'étirement chaque matin pour réveiller le corps.</p>
-    <div class="checklist" id="stretchingList">
-      <label class="check-item" data-id="stretch">
-        <input type="checkbox" id="stretchCheck">
-        <span class="label">Étirements faits ce matin</span>
-      </label>
+    <p class="sport-note">Quelques minutes d'étirement chaque matin pour réveiller le corps.</p>
+    <div class="sport-check-wrap" id="stretchWrap" onclick="toggleStretch()">
+      <div class="sport-checkbox">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="sport-check-label">Étirements faits ce matin</span>
     </div>
-    <div class="sub-title">Cette semaine</div>
-    <div class="tile-grid cols-7" id="stretchWeekGrid"></div>
+    <div>
+      <p class="week-label">Cette semaine</p>
+      <div class="week-tiles" id="stretchWeekGrid"></div>
+    </div>
   </div>
 
-  <div class="card" style="flex:1; min-width:300px;">
-    <div class="card-head">
-      <div>
-        <span class="eyebrow">5h du matin</span>
+  <!-- ② Pas -->
+  <div class="sport-card">
+    <div class="sport-card-head">
+      <div class="left">
+        <p class="sport-eyebrow">Objectif journalier</p>
         <h3>10 000 pas</h3>
       </div>
-      <span class="icon-badge">👟</span>
+      <div class="sport-icon">👟</div>
     </div>
-    <p class="card-note">Note le nombre de pas du jour pour suivre ta progression vers l'objectif.</p>
-    <div class="field">
-      <label for="stepsInput">Pas aujourd'hui</label>
-      <input type="number" id="stepsInput" min="0" placeholder="Ex : pas effectués">
+    <p class="sport-note">Note le nombre de pas du jour pour suivre ta progression.</p>
+    <div class="steps-input-wrap">
+      <span class="steps-ico">👟</span>
+      <input type="number" class="steps-input" id="stepsInput" min="0" max="99999" placeholder="Ex : 7500"/>
     </div>
-    <div class="progress-row" id="stepsBar">
-      <div class="progress"><div class="progress-fill"></div></div>
-      <span class="progress-label">0 / 10000</span>
+    <div class="steps-progress">
+      <div class="steps-bar"><div class="steps-bar-fill" id="stepsBarFill"></div></div>
+      <span class="steps-pct" id="stepsPct">0 / 10k</span>
     </div>
   </div>
 
-</div>
-
-<div class="card-row">
-
-  <div class="card" style="flex:1; min-width:300px;">
-    <div class="card-head">
-      <div>
-        <span class="eyebrow">5x / semaine</span>
+  <!-- ③ Gym -->
+  <div class="sport-card">
+    <div class="sport-card-head">
+      <div class="left">
+        <p class="sport-eyebrow">5x / semaine</p>
         <h3>Gym</h3>
       </div>
-      <span class="icon-badge">🏋️</span>
+      <div class="sport-icon">🏋️</div>
     </div>
-    <p class="card-note">Choisis tes jours de salle pour la semaine — 5 jours maximum.</p>
-    <div class="pill-row" id="gymPills">
-      <span class="pill" data-day="Lun">Lun</span>
-      <span class="pill" data-day="Mar">Mar</span>
-      <span class="pill" data-day="Mer">Mer</span>
-      <span class="pill" data-day="Jeu">Jeu</span>
-      <span class="pill" data-day="Ven">Ven</span>
-      <span class="pill" data-day="Sam">Sam</span>
-      <span class="pill" data-day="Dim">Dim</span>
+    <p class="sport-note">Sélectionne tes jours de salle — 5 jours maximum.</p>
+    <div class="gym-pills" id="gymPills">
+      <span class="gym-pill" data-day="Lun">Lun</span>
+      <span class="gym-pill" data-day="Mar">Mar</span>
+      <span class="gym-pill" data-day="Mer">Mer</span>
+      <span class="gym-pill" data-day="Jeu">Jeu</span>
+      <span class="gym-pill" data-day="Ven">Ven</span>
+      <span class="gym-pill" data-day="Sam">Sam</span>
+      <span class="gym-pill" data-day="Dim">Dim</span>
     </div>
-    <p class="helper-note" style="margin-top:14px;">
-      Jours sélectionnés : <span id="gymCounter">0 / 5</span>
-    </p>
+    <span class="gym-counter">Jours sélectionnés : <strong id="gymCounter">0</strong> / 5</span>
   </div>
 
-  <div class="card" style="flex:1; min-width:300px;">
-    <div class="card-head">
-      <div>
-        <span class="eyebrow">Natation</span>
+  <!-- ④ Natation -->
+  <div class="sport-card">
+    <div class="sport-card-head">
+      <div class="left">
+        <p class="sport-eyebrow">Natation</p>
         <h3>Piscine</h3>
       </div>
-      <span class="icon-badge">🏊</span>
+      <div class="sport-icon">🏊</div>
     </div>
-    <p class="card-note">Coche les jours où tu as nagé.</p>
-    <div class="checklist" id="swimList">
-      <label class="check-item">
-        <input type="checkbox" id="swimCheck">
-        <span class="label">Séance de natation aujourd'hui</span>
-      </label>
+    <p class="sport-note">Coche les jours où tu as nagé cette semaine.</p>
+    <div class="sport-check-wrap" id="swimWrap" onclick="toggleSwim()">
+      <div class="sport-checkbox">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="sport-check-label">Séance de natation aujourd'hui</span>
     </div>
-    <div class="sub-title">Cette semaine</div>
-    <div class="tile-grid cols-7" id="swimWeekGrid"></div>
-  </div>
-
-</div>
-
-<div class="card">
-  <div class="card-head">
     <div>
-      <span class="eyebrow">3 litres par jour</span>
-      <h3>Hydratation</h3>
+      <p class="week-label">Cette semaine</p>
+      <div class="week-tiles" id="swimWeekGrid"></div>
     </div>
-    <span class="icon-badge">💧</span>
   </div>
-  <p class="card-note">Chaque goutte = environ 250 ml. Clique pour remplir au fil de la journée.</p>
-  <div class="water-row" id="waterRow"></div>
-  <p class="helper-note" style="margin-top:14px;">
-    Bu aujourd'hui : <span id="waterLabel">0 / 12</span> (≈ 3 L)
-  </p>
-</div>
 
+  <!-- ⑤ Eau — pleine largeur -->
+  <div class="sport-card full">
+    <div class="sport-card-head">
+      <div class="left">
+        <p class="sport-eyebrow">3 litres par jour</p>
+        <h3>Hydratation</h3>
+      </div>
+      <div class="sport-icon">💧</div>
+    </div>
+    <p class="sport-note">Clique sur chaque verre pour suivre ta consommation d'eau au fil de la journée.</p>
+    <div class="water-info">
+      <div>
+        <div class="water-total" id="waterTotal">0<span>verres</span></div>
+        <div class="water-ml" id="waterMl">0 ml / 3000 ml</div>
+      </div>
+      <div class="water-prog-wrap">
+        <div class="water-prog"><div class="water-prog-fill" id="waterProgFill"></div></div>
+        <div style="font-family:var(--font-mono);font-size:.62rem;color:var(--ink-soft);text-align:right;" id="waterPct">0%</div>
+      </div>
+    </div>
+    <div class="water-grid" id="waterGrid"></div>
+  </div>
+
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 /* ══════════════════════════════════════════════
-   SPORT — synchronisation via API serveur
+   SPORT — 100% API serveur (synchronisé)
    ══════════════════════════════════════════════ */
 
 function fmtDate(d) {
@@ -128,18 +350,20 @@ function getWeekKey(d) {
   return `${t.getFullYear()}-W${Math.round(((t-w)/86400000+w.getDay()+5)/7)}`;
 }
 
-const TODAY    = new Date(); TODAY.setHours(0,0,0,0);
+const TODAY   = new Date(); TODAY.setHours(0,0,0,0);
 const DATE_KEY = fmtDate(TODAY);
 const WEEK_KEY = getWeekKey(TODAY);
-const DAY_IDX  = (TODAY.getDay()+6)%7; // Lun=0
+const DAY_IDX  = (TODAY.getDay()+6)%7;
+const DAYS_FR  = ['L','M','M','J','V','S','D'];
 
+/* ── State local (miroir de la DB) ── */
 let state = {
   steps: 0, water: 0,
   stretching: {}, swim: {},
   gym_days: []
 };
 
-/* ── Charger depuis serveur ── */
+/* ════════ CHARGEMENT INITIAL ════════ */
 async function loadSport() {
   try {
     const res  = await fetch(`/api/sport/${DATE_KEY}`);
@@ -149,146 +373,145 @@ async function loadSport() {
     state.stretching = data.stretching || {};
     state.swim       = data.swim       || {};
     state.gym_days   = data.gym_days   || [];
-    render();
+    renderAll();
   } catch(e) {
     console.error('Erreur chargement sport:', e);
   }
 }
 
-/* ── Sauvegarder données du jour ── */
+/* ════════ SAUVEGARDE API ════════ */
 async function saveDay() {
   await fetch('/api/sport/day', {
     method: 'POST',
-    headers: {'Content-Type':'application/json'},
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
-      date_key: DATE_KEY,
-      steps: state.steps,
-      water: state.water,
+      date_key:   DATE_KEY,
+      steps:      state.steps,
+      water:      state.water,
       stretching: state.stretching,
-      swim: state.swim
+      swim:       state.swim
     })
   });
   document.dispatchEvent(new CustomEvent('pl:update'));
 }
 
-/* ── Sauvegarder gym (semaine) ── */
 async function saveGym() {
   await fetch('/api/sport/gym', {
     method: 'POST',
-    headers: {'Content-Type':'application/json'},
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ week_key: WEEK_KEY, gym_days: state.gym_days })
   });
+  document.dispatchEvent(new CustomEvent('pl:update'));
 }
 
-/* ── Rendu complet ── */
-function render() {
+/* ════════ RENDER ════════ */
+function renderAll() {
+  renderStretch();
   renderSteps();
-  renderWater();
-  renderStretching();
-  renderSwim();
   renderGym();
+  renderSwim();
+  renderWater();
 }
 
+/* ── Stretching ── */
+function toggleStretch() {
+  state.stretching['stretch'] = !state.stretching['stretch'];
+  renderStretch();
+  saveDay();
+}
+function renderStretch() {
+  const wrap = document.getElementById('stretchWrap');
+  if (wrap) wrap.classList.toggle('done', !!state.stretching['stretch']);
+  renderWeekTiles('stretchWeekGrid', !!state.stretching['stretch']);
+}
+
+/* ── Steps ── */
 function renderSteps() {
-  const inp = document.getElementById('stepsInput');
-  const bar = document.getElementById('stepsBar');
+  const inp  = document.getElementById('stepsInput');
+  const fill = document.getElementById('stepsBarFill');
+  const lbl  = document.getElementById('stepsPct');
   if (inp) inp.value = state.steps || '';
-  if (bar) {
-    const pct = Math.min(100, Math.round((state.steps / 10000) * 100));
-    bar.querySelector('.progress-fill').style.width = pct + '%';
-    bar.querySelector('.progress-label').textContent = `${state.steps} / 10000`;
-  }
+  const pct = Math.min(100, Math.round(state.steps / 10000 * 100));
+  if (fill) fill.style.width = pct + '%';
+  if (lbl)  lbl.textContent = state.steps >= 1000
+    ? (Math.round(state.steps/100)/10) + 'k / 10k'
+    : state.steps + ' / 10k';
 }
 
+/* ── Gym ── */
+function renderGym() {
+  document.querySelectorAll('#gymPills .gym-pill').forEach(p => {
+    p.classList.toggle('on', state.gym_days.includes(p.dataset.day));
+  });
+  document.getElementById('gymCounter').textContent = state.gym_days.length;
+}
+
+/* ── Natation ── */
+function toggleSwim() {
+  state.swim['swim'] = !state.swim['swim'];
+  renderSwim();
+  saveDay();
+}
+function renderSwim() {
+  const wrap = document.getElementById('swimWrap');
+  if (wrap) wrap.classList.toggle('done', !!state.swim['swim']);
+  renderWeekTiles('swimWeekGrid', !!state.swim['swim']);
+}
+
+/* ── Eau ── */
 function renderWater() {
-  const row   = document.getElementById('waterRow');
-  const label = document.getElementById('waterLabel');
-  if (!row) return;
-  row.innerHTML = '';
+  const grid = document.getElementById('waterGrid');
+  if (!grid) return;
   const TARGET = 12;
+  grid.innerHTML = '';
+
   for (let i = 1; i <= TARGET; i++) {
-    const drop = document.createElement('span');
-    drop.className = 'water-drop' + (i <= state.water ? ' on' : '');
-    drop.textContent = '💧';
-    drop.onclick = () => {
+    const cup = document.createElement('div');
+    cup.className = 'water-cup' + (i <= state.water ? ' on' : '');
+    cup.innerHTML = `
+      <div class="water-cup-fill"></div>
+      <svg class="water-cup-icon" viewBox="0 0 24 24" fill="none">
+        <path d="M5 3h14l-1.5 15a2 2 0 0 1-2 1.8H8.5a2 2 0 0 1-2-1.8L5 3Z"
+              stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 3h18" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <span class="water-cup-num">${i}</span>`;
+    cup.addEventListener('click', () => {
       state.water = (state.water === i) ? i - 1 : i;
       renderWater();
       saveDay();
-    };
-    row.appendChild(drop);
+    });
+    grid.appendChild(cup);
   }
-  if (label) label.textContent = `${state.water} / ${TARGET}`;
+
+  const pct = Math.round(state.water / TARGET * 100);
+  const ml  = state.water * 250;
+  document.getElementById('waterTotal').innerHTML = `${state.water}<span> verres</span>`;
+  document.getElementById('waterMl').textContent  = `${ml} ml / 3000 ml`;
+  document.getElementById('waterProgFill').style.width = pct + '%';
+  document.getElementById('waterPct').textContent = pct + '%';
 }
 
-function renderStretching() {
-  const chk = document.getElementById('stretchCheck');
-  if (chk) {
-    chk.checked = !!state.stretching['stretch'];
-    chk.onchange = () => {
-      state.stretching['stretch'] = chk.checked;
-      saveDay();
-    };
-  }
-  // Grille semaine (7 cases)
-  const grid = document.getElementById('stretchWeekGrid');
-  if (grid) {
-    grid.innerHTML = '';
-    const DAYS = ['L','M','M','J','V','S','D'];
-    for (let i = 0; i < 7; i++) {
-      const tile = document.createElement('span');
-      tile.className = 'tile' + (i === DAY_IDX && state.stretching['stretch'] ? ' on' : '');
-      tile.textContent = DAYS[i];
-      grid.appendChild(tile);
-    }
-  }
-}
-
-function renderSwim() {
-  const chk = document.getElementById('swimCheck');
-  if (chk) {
-    chk.checked = !!state.swim['swim'];
-    chk.onchange = () => {
-      state.swim['swim'] = chk.checked;
-      saveDay();
-    };
-  }
-  const grid = document.getElementById('swimWeekGrid');
-  if (grid) {
-    grid.innerHTML = '';
-    const DAYS = ['L','M','M','J','V','S','D'];
-    for (let i = 0; i < 7; i++) {
-      const tile = document.createElement('span');
-      tile.className = 'tile' + (i === DAY_IDX && state.swim['swim'] ? ' on' : '');
-      tile.textContent = DAYS[i];
-      grid.appendChild(tile);
-    }
+/* ── Grille semaine générique ── */
+function renderWeekTiles(gridId, todayDone) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const tile = document.createElement('div');
+    const isToday = i === DAY_IDX;
+    const done    = isToday && todayDone;
+    tile.className = 'week-tile' + (done ? ' done' : '') + (isToday ? ' today' : '');
+    tile.textContent = DAYS_FR[i];
+    grid.appendChild(tile);
   }
 }
 
-function renderGym() {
-  const MAX = 5;
-  document.querySelectorAll('#gymPills .pill').forEach(p => {
-    const day = p.dataset.day;
-    p.classList.toggle('on', state.gym_days.includes(day));
-    p.onclick = () => {
-      const idx = state.gym_days.indexOf(day);
-      if (idx > -1) {
-        state.gym_days.splice(idx, 1);
-      } else if (state.gym_days.length < MAX) {
-        state.gym_days.push(day);
-      }
-      renderGym();
-      saveGym();
-    };
-  });
-  const counter = document.getElementById('gymCounter');
-  if (counter) counter.textContent = `${state.gym_days.length} / ${MAX}`;
-}
-
-/* ── Steps input ── */
+/* ════════ EVENTS ════════ */
 document.addEventListener('DOMContentLoaded', () => {
   loadSport();
 
+  /* Steps */
   const inp = document.getElementById('stepsInput');
   if (inp) {
     inp.addEventListener('input', () => {
@@ -298,6 +521,18 @@ document.addEventListener('DOMContentLoaded', () => {
       inp._t = setTimeout(saveDay, 800);
     });
   }
+
+  /* Gym pills */
+  document.querySelectorAll('#gymPills .gym-pill').forEach(p => {
+    p.addEventListener('click', () => {
+      const day = p.dataset.day;
+      const idx = state.gym_days.indexOf(day);
+      if (idx > -1) state.gym_days.splice(idx, 1);
+      else if (state.gym_days.length < 5) state.gym_days.push(day);
+      renderGym();
+      saveGym();
+    });
+  });
 });
 </script>
 {% endblock %}

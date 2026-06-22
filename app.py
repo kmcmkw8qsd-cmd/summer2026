@@ -21,35 +21,60 @@ USERS = {
 }
 
 # ══════════════════════════════════════════════
+# HELPER — week_key compatible avec le JS
+# Même algorithme que getWeekKey() dans les templates
+# Résultat ex: "2026-W26"
+# ══════════════════════════════════════════════
+
+def get_week_key(d_obj):
+    """
+    Calcule la clé semaine ISO au format 'YYYY-Www'
+    identique au calcul JS getWeekKey() utilisé dans les templates.
+    Lundi = début de semaine (ISO 8601).
+    """
+    if isinstance(d_obj, str):
+        d_obj = datetime.strptime(d_obj, '%Y-%m-%d')
+    t = d_obj.replace(hour=0, minute=0, second=0, microsecond=0)
+    # Jour de semaine ISO : Lun=0 … Dim=6
+    dow = (t.weekday())  # Python: Lun=0, Dim=6 → déjà ISO
+    # Jeudi de la même semaine ISO (pivot de l'algorithme ISO 8601)
+    thursday = t.toordinal() + (3 - dow)
+    # 4 janvier de l'année du jeudi → détermine l'année ISO
+    thu_date = date.fromordinal(thursday)
+    jan4 = date(thu_date.year, 1, 4)
+    week_num = (thursday - jan4.toordinal()) // 7 + 1
+    return f"{thu_date.year}-W{week_num}"
+
+
+# ══════════════════════════════════════════════
 # MODÈLES BASE DE DONNÉES
 # ══════════════════════════════════════════════
 
 class Profil(db.Model):
-    id        = db.Column(db.Integer, primary_key=True)
-    username  = db.Column(db.String(50), unique=True, nullable=False)
-    avatar    = db.Column(db.Text, nullable=True)          # base64
-    bio       = db.Column(db.String(200), nullable=True)
+    id           = db.Column(db.Integer, primary_key=True)
+    username     = db.Column(db.String(50), unique=True, nullable=False)
+    avatar       = db.Column(db.Text, nullable=True)          # base64
+    bio          = db.Column(db.String(200), nullable=True)
     display_name = db.Column(db.String(50), nullable=True)
     member_since = db.Column(db.String(50), nullable=True)
 
 class DeenData(db.Model):
     id           = db.Column(db.Integer, primary_key=True)
     username     = db.Column(db.String(50), nullable=False)
-    week_key     = db.Column(db.String(20), nullable=False)  # "2026-W25"
+    week_key     = db.Column(db.String(20), nullable=False)  # "2026-W26"
     salat_data   = db.Column(db.Text, default='{}')          # JSON {fajr_0: true, ...}
-    # Persistants (pas daily)
-    juzamma      = db.Column(db.Text, default='{}')          # JSON {An-Nas: true, ...}
-    quran_hizb   = db.Column(db.Text, default='{}')          # JSON {1: true, ...}
+    # Persistants (pas liés à la semaine)
+    juzamma      = db.Column(db.Text, default='{}')
+    quran_hizb   = db.Column(db.Text, default='{}')
     book_title   = db.Column(db.String(200), default='')
-    book_reading = db.Column(db.Text, default='{}')          # JSON {1: true, ...}
+    book_reading = db.Column(db.Text, default='{}')
     __table_args__ = (db.UniqueConstraint('username', 'week_key'),)
 
 class DeenDaily(db.Model):
-    """Données Deen spécifiques à un jour (adhkar, etc.)"""
-    id            = db.Column(db.Integer, primary_key=True)
-    username      = db.Column(db.String(50), nullable=False)
-    date_key      = db.Column(db.String(10), nullable=False)  # "2026-06-21"
-    adhkar_data   = db.Column(db.Text, default='{}')
+    id           = db.Column(db.Integer, primary_key=True)
+    username     = db.Column(db.String(50), nullable=False)
+    date_key     = db.Column(db.String(10), nullable=False)
+    adhkar_data  = db.Column(db.Text, default='{}')
     __table_args__ = (db.UniqueConstraint('username', 'date_key'),)
 
 class SportData(db.Model):
@@ -58,58 +83,57 @@ class SportData(db.Model):
     date_key    = db.Column(db.String(10), nullable=False)
     steps       = db.Column(db.Integer, default=0)
     water       = db.Column(db.Integer, default=0)
-    stretching  = db.Column(db.Text, default='{}')   # JSON
-    swim        = db.Column(db.Text, default='{}')    # JSON
+    stretching  = db.Column(db.Text, default='{}')
+    swim        = db.Column(db.Text, default='{}')
     __table_args__ = (db.UniqueConstraint('username', 'date_key'),)
 
 class SportWeek(db.Model):
-    id         = db.Column(db.Integer, primary_key=True)
-    username   = db.Column(db.String(50), nullable=False)
-    week_key   = db.Column(db.String(20), nullable=False)
-    gym_days   = db.Column(db.Text, default='[]')   # JSON array ex: ["Lun","Mer"]
+    id        = db.Column(db.Integer, primary_key=True)
+    username  = db.Column(db.String(50), nullable=False)
+    week_key  = db.Column(db.String(20), nullable=False)
+    gym_days  = db.Column(db.Text, default='[]')
     __table_args__ = (db.UniqueConstraint('username', 'week_key'),)
 
 class RegimeData(db.Model):
-    id         = db.Column(db.Integer, primary_key=True)
-    username   = db.Column(db.String(50), nullable=False)
-    date_key   = db.Column(db.String(10), nullable=False)
-    journal    = db.Column(db.Text, default='')
-    checks     = db.Column(db.Text, default='{}')   # JSON {respected: true, ...}
-    hard_data  = db.Column(db.Text, default='{}')   # JSON {workout1: true, ...}
+    id        = db.Column(db.Integer, primary_key=True)
+    username  = db.Column(db.String(50), nullable=False)
+    date_key  = db.Column(db.String(10), nullable=False)
+    journal   = db.Column(db.Text, default='')
+    checks    = db.Column(db.Text, default='{}')
+    hard_data = db.Column(db.Text, default='{}')
     __table_args__ = (db.UniqueConstraint('username', 'date_key'),)
 
 class RegimePersist(db.Model):
-    """Données régime persistantes (objectif, grille 75 Hard)"""
-    id         = db.Column(db.Integer, primary_key=True)
-    username   = db.Column(db.String(50), unique=True, nullable=False)
-    goal       = db.Column(db.String(300), default='')
-    hard75     = db.Column(db.Text, default='{}')   # JSON {1: true, ...}
+    id       = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    goal     = db.Column(db.String(300), default='')
+    hard75   = db.Column(db.Text, default='{}')
 
 class LearningData(db.Model):
-    id           = db.Column(db.Integer, primary_key=True)
-    username     = db.Column(db.String(50), nullable=False)
-    date_key     = db.Column(db.String(10), nullable=False)
-    lang_checks  = db.Column(db.Text, default='{}')
-    activity_done = db.Column(db.Text, default='{}')
-    culture_note = db.Column(db.String(300), default='')
-    __table_args__ = (db.UniqueConstraint('username', 'date_key'),)
+    id             = db.Column(db.Integer, primary_key=True)
+    username       = db.Column(db.String(50), nullable=False)
+    date_key       = db.Column(db.String(10), nullable=False)
+    lang_checks    = db.Column(db.Text, default='{}')
+    activity_done  = db.Column(db.Text, default='{}')
+    culture_note   = db.Column(db.String(300), default='')
+    __table_args__  = (db.UniqueConstraint('username', 'date_key'),)
 
 class LearningPersist(db.Model):
-    id           = db.Column(db.Integer, primary_key=True)
-    username     = db.Column(db.String(50), unique=True, nullable=False)
-    lang_name    = db.Column(db.String(100), default='')
-    activity_name = db.Column(db.String(200), default='')
-    lang_streak  = db.Column(db.Text, default='{}')
-    activity_streak = db.Column(db.Text, default='{}')
-    culture_streak  = db.Column(db.Text, default='{}')
+    id               = db.Column(db.Integer, primary_key=True)
+    username         = db.Column(db.String(50), unique=True, nullable=False)
+    lang_name        = db.Column(db.String(100), default='')
+    activity_name    = db.Column(db.String(200), default='')
+    lang_streak      = db.Column(db.Text, default='{}')
+    activity_streak  = db.Column(db.Text, default='{}')
+    culture_streak   = db.Column(db.Text, default='{}')
 
 class SelfcareData(db.Model):
-    id         = db.Column(db.Integer, primary_key=True)
-    username   = db.Column(db.String(50), nullable=False)
-    date_key   = db.Column(db.String(10), nullable=False)
-    checks     = db.Column(db.Text, default='{}')
-    mood       = db.Column(db.String(10), default='')
-    mood_note  = db.Column(db.Text, default='')
+    id        = db.Column(db.Integer, primary_key=True)
+    username  = db.Column(db.String(50), nullable=False)
+    date_key  = db.Column(db.String(10), nullable=False)
+    checks    = db.Column(db.Text, default='{}')
+    mood      = db.Column(db.String(10), default='')
+    mood_note = db.Column(db.Text, default='')
     __table_args__ = (db.UniqueConstraint('username', 'date_key'),)
 
 class SelfcarePersist(db.Model):
@@ -118,11 +142,11 @@ class SelfcarePersist(db.Model):
     streak   = db.Column(db.Text, default='{}')
 
 class HomecareData(db.Model):
-    id         = db.Column(db.Integer, primary_key=True)
-    username   = db.Column(db.String(50), nullable=False)
-    date_key   = db.Column(db.String(10), nullable=False)
-    checks     = db.Column(db.Text, default='{}')
-    minutes    = db.Column(db.Text, default='{}')   # {dishes: 15, laundry: 20, ...}
+    id       = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), nullable=False)
+    date_key = db.Column(db.String(10), nullable=False)
+    checks   = db.Column(db.Text, default='{}')
+    minutes  = db.Column(db.Text, default='{}')
     __table_args__ = (db.UniqueConstraint('username', 'date_key'),)
 
 class HomecarePersist(db.Model):
@@ -151,7 +175,6 @@ def login():
         password = request.form['password']
         if username in USERS and USERS[username] == password:
             session['username'] = username
-            # Créer profil si inexistant
             if not Profil.query.filter_by(username=username).first():
                 p = Profil(username=username, display_name=username)
                 db.session.add(p)
@@ -244,14 +267,10 @@ def api_profil_save():
     if not p:
         p = Profil(username=u)
         db.session.add(p)
-    if 'username' in data:
-        p.display_name = data['username']
-    if 'avatar' in data:
-        p.avatar = data['avatar']
-    if 'bio' in data:
-        p.bio = data['bio']
-    if 'memberSince' in data:
-        p.member_since = data['memberSince']
+    if 'username' in data:     p.display_name = data['username']
+    if 'avatar' in data:       p.avatar = data['avatar']
+    if 'bio' in data:          p.bio = data['bio']
+    if 'memberSince' in data:  p.member_since = data['memberSince']
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -264,16 +283,16 @@ def api_profil_save():
 @login_required
 def api_deen_get(week_key):
     u = session['username']
+    # Salat lié à la semaine demandée
     d = DeenData.query.filter_by(username=u, week_key=week_key).first()
-    p = Profil.query.filter_by(username=u).first()
-    # Données persistantes (pas liées à la semaine)
+    # Persistants : on prend le premier enregistrement (peu importe la semaine)
     any_d = DeenData.query.filter_by(username=u).first()
     return jsonify({
-        'salat':       json.loads(d.salat_data if d else '{}'),
-        'juzamma':     json.loads(any_d.juzamma if any_d else '{}'),
-        'quran_hizb':  json.loads(any_d.quran_hizb if any_d else '{}'),
-        'book_title':  any_d.book_title if any_d else '',
-        'book_reading':json.loads(any_d.book_reading if any_d else '{}'),
+        'salat':        json.loads(d.salat_data   if d     else '{}'),
+        'juzamma':      json.loads(any_d.juzamma   if any_d else '{}'),
+        'quran_hizb':   json.loads(any_d.quran_hizb if any_d else '{}'),
+        'book_title':   any_d.book_title            if any_d else '',
+        'book_reading': json.loads(any_d.book_reading if any_d else '{}'),
     })
 
 @app.route('/api/deen/salat', methods=['POST'])
@@ -281,6 +300,8 @@ def api_deen_get(week_key):
 def api_deen_salat():
     u = session['username']
     data = request.get_json()
+    # ✅ FIX: utilise get_week_key() si le client envoie une date,
+    #         sinon utilise directement le week_key envoyé par le JS
     week_key = data.get('week_key')
     d = DeenData.query.filter_by(username=u, week_key=week_key).first()
     if not d:
@@ -295,19 +316,17 @@ def api_deen_salat():
 def api_deen_persist():
     u = session['username']
     data = request.get_json()
-    # Cherche ou crée un enregistrement (on prend le premier)
+    # Persistants : on travaille toujours sur le premier enregistrement
     d = DeenData.query.filter_by(username=u).first()
     if not d:
-        d = DeenData(username=u, week_key='persist')
+        # Crée avec la semaine courante comme anchor
+        week_key = get_week_key(datetime.utcnow())
+        d = DeenData(username=u, week_key=week_key)
         db.session.add(d)
-    if 'juzamma' in data:
-        d.juzamma = json.dumps(data['juzamma'])
-    if 'quran_hizb' in data:
-        d.quran_hizb = json.dumps(data['quran_hizb'])
-    if 'book_title' in data:
-        d.book_title = data['book_title']
-    if 'book_reading' in data:
-        d.book_reading = json.dumps(data['book_reading'])
+    if 'juzamma'      in data: d.juzamma      = json.dumps(data['juzamma'])
+    if 'quran_hizb'   in data: d.quran_hizb   = json.dumps(data['quran_hizb'])
+    if 'book_title'   in data: d.book_title   = data['book_title']
+    if 'book_reading' in data: d.book_reading = json.dumps(data['book_reading'])
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -320,14 +339,8 @@ def api_deen_persist():
 @login_required
 def api_sport_get(date_key):
     u = session['username']
-    # Calcule la semaine depuis la date
-    d_obj = datetime.strptime(date_key, '%Y-%m-%d')
-    import math
-    t = d_obj; t = t.replace(hour=0,minute=0,second=0)
-    t2 = t.toordinal()
-    # isoweek simple
-    week_key = d_obj.strftime('%G-W%V')
-
+    # ✅ FIX: utilise get_week_key() au lieu de strftime('%G-W%V')
+    week_key = get_week_key(date_key)
     s = SportData.query.filter_by(username=u, date_key=date_key).first()
     w = SportWeek.query.filter_by(username=u, week_key=week_key).first()
     return jsonify({
@@ -349,10 +362,10 @@ def api_sport_day():
     if not s:
         s = SportData(username=u, date_key=date_key)
         db.session.add(s)
-    if 'steps' in data:      s.steps = int(data['steps'])
-    if 'water' in data:      s.water = int(data['water'])
+    if 'steps'      in data: s.steps      = int(data['steps'])
+    if 'water'      in data: s.water      = int(data['water'])
     if 'stretching' in data: s.stretching = json.dumps(data['stretching'])
-    if 'swim' in data:       s.swim = json.dumps(data['swim'])
+    if 'swim'       in data: s.swim       = json.dumps(data['swim'])
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -382,11 +395,11 @@ def api_regime_get(date_key):
     r = RegimeData.query.filter_by(username=u, date_key=date_key).first()
     p = RegimePersist.query.filter_by(username=u).first()
     return jsonify({
-        'journal':  r.journal if r else '',
-        'checks':   json.loads(r.checks if r else '{}'),
-        'hard_data':json.loads(r.hard_data if r else '{}'),
-        'goal':     p.goal if p else '',
-        'hard75':   json.loads(p.hard75 if p else '{}'),
+        'journal':   r.journal   if r else '',
+        'checks':    json.loads(r.checks    if r else '{}'),
+        'hard_data': json.loads(r.hard_data if r else '{}'),
+        'goal':      p.goal      if p else '',
+        'hard75':    json.loads(p.hard75    if p else '{}'),
     })
 
 @app.route('/api/regime/day', methods=['POST'])
@@ -399,8 +412,8 @@ def api_regime_day():
     if not r:
         r = RegimeData(username=u, date_key=date_key)
         db.session.add(r)
-    if 'journal' in data:   r.journal = data['journal']
-    if 'checks' in data:    r.checks = json.dumps(data['checks'])
+    if 'journal'   in data: r.journal   = data['journal']
+    if 'checks'    in data: r.checks    = json.dumps(data['checks'])
     if 'hard_data' in data: r.hard_data = json.dumps(data['hard_data'])
     db.session.commit()
     return jsonify({'ok': True})
@@ -414,7 +427,7 @@ def api_regime_persist():
     if not p:
         p = RegimePersist(username=u)
         db.session.add(p)
-    if 'goal' in data:   p.goal = data['goal']
+    if 'goal'   in data: p.goal   = data['goal']
     if 'hard75' in data: p.hard75 = json.dumps(data['hard75'])
     db.session.commit()
     return jsonify({'ok': True})
@@ -431,14 +444,14 @@ def api_learning_get(date_key):
     l = LearningData.query.filter_by(username=u, date_key=date_key).first()
     p = LearningPersist.query.filter_by(username=u).first()
     return jsonify({
-        'lang_checks':    json.loads(l.lang_checks if l else '{}'),
-        'activity_done':  json.loads(l.activity_done if l else '{}'),
-        'culture_note':   l.culture_note if l else '',
-        'lang_name':      p.lang_name if p else '',
-        'activity_name':  p.activity_name if p else '',
-        'lang_streak':    json.loads(p.lang_streak if p else '{}'),
-        'activity_streak':json.loads(p.activity_streak if p else '{}'),
-        'culture_streak': json.loads(p.culture_streak if p else '{}'),
+        'lang_checks':     json.loads(l.lang_checks    if l else '{}'),
+        'activity_done':   json.loads(l.activity_done  if l else '{}'),
+        'culture_note':    l.culture_note               if l else '',
+        'lang_name':       p.lang_name                  if p else '',
+        'activity_name':   p.activity_name              if p else '',
+        'lang_streak':     json.loads(p.lang_streak     if p else '{}'),
+        'activity_streak': json.loads(p.activity_streak if p else '{}'),
+        'culture_streak':  json.loads(p.culture_streak  if p else '{}'),
     })
 
 @app.route('/api/learning/day', methods=['POST'])
@@ -451,9 +464,9 @@ def api_learning_day():
     if not l:
         l = LearningData(username=u, date_key=date_key)
         db.session.add(l)
-    if 'lang_checks' in data:   l.lang_checks = json.dumps(data['lang_checks'])
-    if 'activity_done' in data:  l.activity_done = json.dumps(data['activity_done'])
-    if 'culture_note' in data:   l.culture_note = data['culture_note']
+    if 'lang_checks'   in data: l.lang_checks   = json.dumps(data['lang_checks'])
+    if 'activity_done' in data: l.activity_done  = json.dumps(data['activity_done'])
+    if 'culture_note'  in data: l.culture_note   = data['culture_note']
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -466,11 +479,11 @@ def api_learning_persist():
     if not p:
         p = LearningPersist(username=u)
         db.session.add(p)
-    if 'lang_name' in data:       p.lang_name = data['lang_name']
-    if 'activity_name' in data:    p.activity_name = data['activity_name']
-    if 'lang_streak' in data:      p.lang_streak = json.dumps(data['lang_streak'])
-    if 'activity_streak' in data:  p.activity_streak = json.dumps(data['activity_streak'])
-    if 'culture_streak' in data:   p.culture_streak = json.dumps(data['culture_streak'])
+    if 'lang_name'        in data: p.lang_name        = data['lang_name']
+    if 'activity_name'    in data: p.activity_name    = data['activity_name']
+    if 'lang_streak'      in data: p.lang_streak      = json.dumps(data['lang_streak'])
+    if 'activity_streak'  in data: p.activity_streak  = json.dumps(data['activity_streak'])
+    if 'culture_streak'   in data: p.culture_streak   = json.dumps(data['culture_streak'])
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -486,10 +499,10 @@ def api_selfcare_get(date_key):
     s = SelfcareData.query.filter_by(username=u, date_key=date_key).first()
     p = SelfcarePersist.query.filter_by(username=u).first()
     return jsonify({
-        'checks':    json.loads(s.checks if s else '{}'),
-        'mood':      s.mood if s else '',
-        'mood_note': s.mood_note if s else '',
-        'streak':    json.loads(p.streak if p else '{}'),
+        'checks':    json.loads(s.checks    if s else '{}'),
+        'mood':      s.mood                 if s else '',
+        'mood_note': s.mood_note            if s else '',
+        'streak':    json.loads(p.streak    if p else '{}'),
     })
 
 @app.route('/api/selfcare/day', methods=['POST'])
@@ -502,8 +515,8 @@ def api_selfcare_day():
     if not s:
         s = SelfcareData(username=u, date_key=date_key)
         db.session.add(s)
-    if 'checks' in data:    s.checks = json.dumps(data['checks'])
-    if 'mood' in data:      s.mood = data['mood']
+    if 'checks'    in data: s.checks    = json.dumps(data['checks'])
+    if 'mood'      in data: s.mood      = data['mood']
     if 'mood_note' in data: s.mood_note = data['mood_note']
     db.session.commit()
     return jsonify({'ok': True})
@@ -533,9 +546,9 @@ def api_homecare_get(date_key):
     h = HomecareData.query.filter_by(username=u, date_key=date_key).first()
     p = HomecarePersist.query.filter_by(username=u).first()
     return jsonify({
-        'checks':  json.loads(h.checks if h else '{}'),
+        'checks':  json.loads(h.checks  if h else '{}'),
         'minutes': json.loads(h.minutes if h else '{}'),
-        'streak':  json.loads(p.streak if p else '{}'),
+        'streak':  json.loads(p.streak  if p else '{}'),
     })
 
 @app.route('/api/homecare/day', methods=['POST'])
@@ -548,7 +561,7 @@ def api_homecare_day():
     if not h:
         h = HomecareData(username=u, date_key=date_key)
         db.session.add(h)
-    if 'checks' in data:  h.checks = json.dumps(data['checks'])
+    if 'checks'  in data: h.checks  = json.dumps(data['checks'])
     if 'minutes' in data: h.minutes = json.dumps(data['minutes'])
     db.session.commit()
     return jsonify({'ok': True})
@@ -575,14 +588,16 @@ def api_homecare_persist():
 @login_required
 def api_dashboard(date_key):
     u = session['username']
-    week_key = datetime.strptime(date_key, '%Y-%m-%d').strftime('%G-W%V')
 
-    # Salat
+    # ✅ FIX PRINCIPAL : utilise get_week_key() — même algorithme que le JS
+    week_key = get_week_key(date_key)
+
+    # Salat — cherche avec le bon week_key
     deen = DeenData.query.filter_by(username=u, week_key=week_key).first()
     salat = json.loads(deen.salat_data if deen else '{}')
 
     # Sport
-    sport = SportData.query.filter_by(username=u, date_key=date_key).first()
+    sport      = SportData.query.filter_by(username=u, date_key=date_key).first()
     sport_week = SportWeek.query.filter_by(username=u, week_key=week_key).first()
 
     # Régime
@@ -600,14 +615,14 @@ def api_dashboard(date_key):
     hc_min = sum(v for v in hc_minutes.values() if isinstance(v, (int, float)))
 
     return jsonify({
-        'salat':      salat,
-        'steps':      sport.steps if sport else 0,
-        'water':      sport.water if sport else 0,
-        'gym_days':   json.loads(sport_week.gym_days if sport_week else '[]'),
-        'regime_checks': json.loads(regime.checks if regime else '{}'),
-        'learning_checks': json.loads(learning.lang_checks if learning else '{}'),
-        'selfcare_checks': json.loads(sc.checks if sc else '{}'),
-        'homecare_min':  hc_min,
+        'salat':             salat,
+        'steps':             sport.steps if sport else 0,
+        'water':             sport.water if sport else 0,
+        'gym_days':          json.loads(sport_week.gym_days if sport_week else '[]'),
+        'regime_checks':     json.loads(regime.checks if regime else '{}'),
+        'learning_checks':   json.loads(learning.lang_checks if learning else '{}'),
+        'selfcare_checks':   json.loads(sc.checks if sc else '{}'),
+        'homecare_min':      hc_min,
     })
 
 
