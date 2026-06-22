@@ -1,0 +1,676 @@
+{% extends "base.html" %}
+{% block title %}Goals 2026 — Planning{% endblock %}
+{% block page_title %}Goals 2026{% endblock %}
+{% block page_subtitle %}Tes objectifs de l'année — un à un, jusqu'au bout.{% endblock %}
+
+{% block extra_css %}
+<style>
+.goals-hero {
+  background: var(--primary-d);
+  border-radius: var(--radius-l);
+  padding: 36px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.goals-hero::before {
+  content: "";
+  position: absolute;
+  right: -40px; top: -40px;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(200,149,75,0.2);
+  pointer-events: none;
+}
+.goals-hero::after {
+  content: "";
+  position: absolute;
+  right: 40px; top: 20px;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(239,233,220,0.08);
+  pointer-events: none;
+}
+.goals-hero-left { position: relative; z-index: 1; }
+.goals-hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-l);
+  margin-bottom: 8px;
+}
+.goals-hero-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: #FAF6EE;
+  margin: 0 0 6px;
+}
+.goals-hero-sub {
+  font-size: 0.88rem;
+  color: #9C8E78;
+  margin: 0;
+}
+.goals-hero-ring {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  text-align: center;
+}
+.goals-hero-ring svg { transform: rotate(-90deg); display: block; }
+.ring-track-g { fill: none; stroke: rgba(239,233,220,0.1); stroke-width: 7; }
+.ring-prog-g  { fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round;
+                stroke-dasharray: 226; stroke-dashoffset: 226;
+                transition: stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1); }
+.ring-label {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+}
+.ring-label-num {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: #FAF6EE;
+  line-height: 1;
+}
+.ring-label-sub {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--accent-l);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* ── Catégories ── */
+.cat-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cat-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.cat-tab:hover { border-color: var(--accent); color: var(--ink); }
+.cat-tab.active {
+  background: var(--primary-d);
+  border-color: var(--primary-d);
+  color: #FAF6EE;
+}
+.cat-tab .cat-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Goals list ── */
+.goals-section { display: none; }
+.goals-section.visible { display: block; }
+
+.goals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.goal-item {
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+  position: relative;
+}
+.goal-item:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-s);
+}
+.goal-item.done {
+  background: var(--surface-2);
+  border-color: var(--ok);
+}
+.goal-item.done .goal-title {
+  text-decoration: line-through;
+  color: var(--ink-soft);
+}
+
+.goal-check {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: var(--surface);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-top: 1px;
+}
+.goal-item.done .goal-check {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+.goal-check svg {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.goal-item.done .goal-check svg { opacity: 1; }
+
+.goal-body { flex: 1; min-width: 0; }
+.goal-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--primary-d);
+  margin-bottom: 3px;
+  transition: color 0.15s;
+}
+.goal-meta {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.goal-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+}
+.goal-badge.q1 { color: #4A7361; border-color: #B2CCB0; background: #DCE8D8; }
+.goal-badge.q2 { color: #C8954B; border-color: #F3E3C7; background: #FDF6EC; }
+.goal-badge.q3 { color: #7a5a2a; border-color: #e8d5a3; background: #fdf3dc; }
+.goal-badge.q4 { color: #B5563B; border-color: #f0c0b0; background: #fdeee9; }
+
+.goal-delete {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: opacity 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.goal-item:hover .goal-delete { opacity: 1; }
+.goal-delete:hover { background: rgba(181,86,59,0.1); }
+
+/* ── Add goal form ── */
+.add-goal-form {
+  background: var(--surface);
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-m);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.15s;
+}
+.add-goal-form:focus-within { border-color: var(--accent); border-style: solid; }
+
+.add-goal-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.add-goal-input {
+  flex: 1;
+  min-width: 180px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  padding: 9px 13px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--ink);
+  transition: border-color 0.15s;
+}
+.add-goal-input:focus { border-color: var(--accent); outline: none; }
+
+.add-goal-select {
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  padding: 9px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.add-goal-select:focus { border-color: var(--accent); outline: none; }
+
+.add-goal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--primary);
+  color: #FAF6EE;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.add-goal-btn:hover { background: var(--primary-d); }
+.add-goal-btn:active { transform: scale(0.97); }
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ink-soft);
+}
+.empty-state-icon {
+  font-size: 2.4rem;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+.empty-state p {
+  font-size: 0.9rem;
+  margin: 0;
+  font-style: italic;
+}
+
+/* ── Progress mini bars ── */
+.cat-progress-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.cat-prog-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  padding: 14px 16px;
+}
+.cat-prog-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cat-prog-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--primary-d);
+}
+.cat-prog-pct {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+.cat-prog-bar {
+  width: 100%;
+  height: 5px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.cat-prog-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary-l), var(--accent));
+  width: 0%;
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+}
+.cat-prog-count {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+
+@media (max-width: 600px) {
+  .goals-hero { flex-direction: column; gap: 20px; }
+  .add-goal-row { flex-direction: column; align-items: stretch; }
+  .add-goal-input, .add-goal-select, .add-goal-btn { width: 100%; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<div class="goals-hero">
+  <div class="goals-hero-left">
+    <p class="goals-hero-eyebrow">AN 2026 — Objectifs</p>
+    <h2 class="goals-hero-title">Chaque goal coché<br>est une victoire.</h2>
+    <p class="goals-hero-sub" id="g-hero-sub">Chargement...</p>
+  </div>
+  <div class="goals-hero-ring" style="width:90px;height:90px;">
+    <svg width="90" height="90" viewBox="0 0 90 90">
+      <circle class="ring-track-g" cx="45" cy="45" r="36"/>
+      <circle class="ring-prog-g" id="g-ring" cx="45" cy="45" r="36"/>
+    </svg>
+    <div class="ring-label">
+      <span class="ring-label-num" id="g-ring-num">0%</span>
+      <span class="ring-label-sub">global</span>
+    </div>
+  </div>
+</div>
+
+<!-- Progress par catégorie -->
+<div>
+  <p class="section-label" style="font-family:var(--font-mono);font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-soft);display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+    Progression par catégorie
+    <span style="flex:1;height:1px;background:var(--line);display:block;"></span>
+  </p>
+  <div class="cat-progress-row" id="g-cat-progress"></div>
+</div>
+
+<!-- Tabs catégories -->
+<div>
+  <p class="section-label" style="font-family:var(--font-mono);font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-soft);display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+    Mes goals
+    <span style="flex:1;height:1px;background:var(--line);display:block;"></span>
+  </p>
+  <div class="cat-tabs" id="g-tabs"></div>
+</div>
+
+<!-- Goals par section -->
+<div id="g-sections"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ══════════════════════════════════════════════
+   GOALS 2026 — dynamique, par catégorie, par user
+   ══════════════════════════════════════════════ */
+
+const CATS = [
+  { id: 'deen',      label: 'Deen',      icon: '🌙', color: '#4A7361' },
+  { id: 'sport',     label: 'Sport',     icon: '🏋️', color: '#C8954B' },
+  { id: 'regime',    label: 'Régime',    icon: '🥗', color: '#7a5a2a' },
+  { id: 'learning',  label: 'Learning',  icon: '📚', color: '#2F4F3E' },
+  { id: 'career',    label: 'Career',    icon: '💼', color: '#B5563B' },
+  { id: 'personnel', label: 'Personnel', icon: '✨', color: '#6B6256' },
+];
+
+const QUARTERS = [
+  { id: 'q1', label: 'Q1 · Jan–Mar' },
+  { id: 'q2', label: 'Q2 · Avr–Juin' },
+  { id: 'q3', label: 'Q3 · Juil–Sep' },
+  { id: 'q4', label: 'Q4 · Oct–Déc' },
+  { id: 'year', label: 'Toute l\'année' },
+];
+
+let goals = [];
+let activeTab = 'deen';
+
+/* ════════ API ════════ */
+async function loadGoals() {
+  try {
+    const res = await fetch('/api/goals');
+    goals = await res.json();
+  } catch(e) { goals = []; }
+  renderAll();
+}
+
+async function saveGoal(goal) {
+  await fetch('/api/goals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(goal)
+  });
+}
+
+async function deleteGoal(id) {
+  await fetch(`/api/goals/${id}`, { method: 'DELETE' });
+}
+
+async function toggleGoal(id) {
+  await fetch(`/api/goals/${id}/toggle`, { method: 'POST' });
+}
+
+/* ════════ RENDER ════════ */
+function renderAll() {
+  renderTabs();
+  renderSections();
+  renderCatProgress();
+  renderHero();
+}
+
+/* Tabs */
+function renderTabs() {
+  const container = document.getElementById('g-tabs');
+  container.innerHTML = '';
+  CATS.forEach(cat => {
+    const count = goals.filter(g => g.category === cat.id).length;
+    const done  = goals.filter(g => g.category === cat.id && g.done).length;
+    const btn = document.createElement('button');
+    btn.className = 'cat-tab' + (activeTab === cat.id ? ' active' : '');
+    btn.innerHTML = `
+      <span class="cat-dot" style="background:${cat.color}"></span>
+      ${cat.icon} ${cat.label}
+      <span style="font-family:var(--font-mono);font-size:0.7rem;opacity:0.7;">${done}/${count}</span>`;
+    btn.onclick = () => { activeTab = cat.id; renderAll(); };
+    container.appendChild(btn);
+  });
+}
+
+/* Sections goals */
+function renderSections() {
+  const container = document.getElementById('g-sections');
+  container.innerHTML = '';
+
+  const cat = CATS.find(c => c.id === activeTab);
+  const catGoals = goals.filter(g => g.category === activeTab);
+
+  const section = document.createElement('div');
+  section.className = 'goals-section visible';
+
+  /* Liste des goals */
+  const list = document.createElement('div');
+  list.className = 'goals-list';
+
+  if (catGoals.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">${cat.icon}</div>
+        <p>Aucun goal pour ${cat.label} encore.<br>Ajoute ton premier objectif ci-dessous !</p>
+      </div>`;
+  } else {
+    catGoals.forEach(goal => {
+      const item = document.createElement('div');
+      item.className = 'goal-item' + (goal.done ? ' done' : '');
+      const q = QUARTERS.find(q => q.id === goal.quarter) || QUARTERS[4];
+      item.innerHTML = `
+        <div class="goal-check">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+               stroke="#FAF6EE" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div class="goal-body">
+          <div class="goal-title">${escHtml(goal.title)}</div>
+          <div class="goal-meta">
+            <span class="goal-badge ${goal.quarter}">${q.label}</span>
+            ${goal.note ? `<span style="font-size:0.78rem;color:var(--ink-soft);">${escHtml(goal.note)}</span>` : ''}
+          </div>
+        </div>
+        <button class="goal-delete" title="Supprimer" aria-label="Supprimer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+          </svg>
+        </button>`;
+
+      /* Toggle done */
+      item.querySelector('.goal-check').onclick = async (e) => {
+        e.stopPropagation();
+        const g = goals.find(x => x.id === goal.id);
+        if (g) g.done = !g.done;
+        await toggleGoal(goal.id);
+        renderAll();
+      };
+      item.querySelector('.goal-body').onclick = async () => {
+        const g = goals.find(x => x.id === goal.id);
+        if (g) g.done = !g.done;
+        await toggleGoal(goal.id);
+        renderAll();
+      };
+
+      /* Delete */
+      item.querySelector('.goal-delete').onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm('Supprimer ce goal ?')) return;
+        goals = goals.filter(x => x.id !== goal.id);
+        await deleteGoal(goal.id);
+        renderAll();
+      };
+
+      list.appendChild(item);
+    });
+  }
+
+  section.appendChild(list);
+
+  /* Formulaire ajout */
+  const form = document.createElement('div');
+  form.className = 'add-goal-form';
+  form.innerHTML = `
+    <div class="add-goal-row">
+      <input class="add-goal-input" id="new-goal-title" type="text"
+             placeholder="Ton objectif pour ${cat.label}..." maxlength="120">
+      <select class="add-goal-select" id="new-goal-quarter">
+        ${QUARTERS.map(q => `<option value="${q.id}">${q.label}</option>`).join('')}
+      </select>
+    </div>
+    <div class="add-goal-row">
+      <input class="add-goal-input" id="new-goal-note" type="text"
+             placeholder="Note ou contexte (optionnel)..." maxlength="160">
+      <button class="add-goal-btn" id="new-goal-submit">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Ajouter
+      </button>
+    </div>`;
+
+  form.querySelector('#new-goal-submit').onclick = async () => {
+    const titleEl   = form.querySelector('#new-goal-title');
+    const quarterEl = form.querySelector('#new-goal-quarter');
+    const noteEl    = form.querySelector('#new-goal-note');
+    const title = titleEl.value.trim();
+    if (!title) { titleEl.focus(); return; }
+
+    const newGoal = {
+      id:       Date.now(),
+      category: activeTab,
+      title,
+      quarter:  quarterEl.value,
+      note:     noteEl.value.trim(),
+      done:     false,
+    };
+    goals.push(newGoal);
+    await saveGoal(newGoal);
+    titleEl.value = '';
+    noteEl.value  = '';
+    renderAll();
+  };
+
+  /* Enter pour submit */
+  form.querySelector('#new-goal-title').addEventListener('keydown', e => {
+    if (e.key === 'Enter') form.querySelector('#new-goal-submit').click();
+  });
+
+  section.appendChild(form);
+  container.appendChild(section);
+}
+
+/* Progress par catégorie */
+function renderCatProgress() {
+  const container = document.getElementById('g-cat-progress');
+  container.innerHTML = '';
+  CATS.forEach(cat => {
+    const total = goals.filter(g => g.category === cat.id).length;
+    const done  = goals.filter(g => g.category === cat.id && g.done).length;
+    const pct   = total > 0 ? Math.round(done / total * 100) : 0;
+    const card  = document.createElement('div');
+    card.className = 'cat-prog-card';
+    card.innerHTML = `
+      <div class="cat-prog-top">
+        <span class="cat-prog-name">
+          <span style="width:8px;height:8px;border-radius:50%;background:${cat.color};display:inline-block;"></span>
+          ${cat.icon} ${cat.label}
+        </span>
+        <span class="cat-prog-pct">${pct}%</span>
+      </div>
+      <div class="cat-prog-bar">
+        <div class="cat-prog-fill" style="width:0%" data-pct="${pct}"></div>
+      </div>
+      <div class="cat-prog-count">${done} / ${total} accomplis</div>`;
+    container.appendChild(card);
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.cat-prog-fill[data-pct]').forEach(el => {
+      el.style.width = el.dataset.pct + '%';
+    });
+  }, 150);
+}
+
+/* Hero ring */
+function renderHero() {
+  const total  = goals.length;
+  const done   = goals.filter(g => g.done).length;
+  const pct    = total > 0 ? Math.round(done / total * 100) : 0;
+  const CIRC   = 2 * Math.PI * 36;
+
+  document.getElementById('g-ring-num').textContent = pct + '%';
+  document.getElementById('g-hero-sub').textContent =
+    total === 0
+      ? 'Commence par ajouter tes premiers goals !'
+      : `${done} goal${done > 1 ? 's' : ''} accompli${done > 1 ? 's' : ''} sur ${total} — continue comme ça !`;
+
+  setTimeout(() => {
+    const ring = document.getElementById('g-ring');
+    if (ring) ring.style.strokeDashoffset = CIRC - (pct / 100) * CIRC;
+  }, 200);
+}
+
+/* Escape HTML */
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* Boot */
+document.addEventListener('DOMContentLoaded', loadGoals);
+</script>
+{% endblock %}
