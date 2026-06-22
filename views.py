@@ -50,3 +50,6 @@ def selfcare(request):
 @login_required(login_url='/')
 def homecare(request):
     return render(request, 'homecare.html')
+
+def goals(request):
+    return render(request, 'Goals.html')
