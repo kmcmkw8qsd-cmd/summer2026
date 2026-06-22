@@ -52,4 +52,4 @@ def homecare(request):
     return render(request, 'homecare.html')
 
 def goals(request):
-    return render(request, 'Goals.html')
+    return render(request, 'goals.html')
