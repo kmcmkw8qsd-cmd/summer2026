@@ -15,35 +15,29 @@
   </div>
   <p class="card-note">Indique le temps passé (en minutes) sur chaque tâche réalisée aujourd'hui. Le total se calcule automatiquement.</p>
 
-  <div class="checklist" id="homecareList" data-checklist="homecare_done" data-daily="true">
+  <div class="checklist" id="homecareList">
     <label class="check-item" data-id="dishes">
-      <input type="checkbox">
-      <span class="label">Vaisselle</span>
+      <input type="checkbox"><span class="label">Vaisselle</span>
       <input type="number" class="home-minutes" data-task="dishes" min="0" placeholder="min" style="width:70px;">
     </label>
     <label class="check-item" data-id="laundry">
-      <input type="checkbox">
-      <span class="label">Linge</span>
+      <input type="checkbox"><span class="label">Linge</span>
       <input type="number" class="home-minutes" data-task="laundry" min="0" placeholder="min" style="width:70px;">
     </label>
     <label class="check-item" data-id="tidying">
-      <input type="checkbox">
-      <span class="label">Rangement</span>
+      <input type="checkbox"><span class="label">Rangement</span>
       <input type="number" class="home-minutes" data-task="tidying" min="0" placeholder="min" style="width:70px;">
     </label>
     <label class="check-item" data-id="cleaning">
-      <input type="checkbox">
-      <span class="label">Nettoyage (sols, surfaces)</span>
+      <input type="checkbox"><span class="label">Nettoyage (sols, surfaces)</span>
       <input type="number" class="home-minutes" data-task="cleaning" min="0" placeholder="min" style="width:70px;">
     </label>
     <label class="check-item" data-id="plants">
-      <input type="checkbox">
-      <span class="label">Plantes / aération</span>
+      <input type="checkbox"><span class="label">Plantes / aération</span>
       <input type="number" class="home-minutes" data-task="plants" min="0" placeholder="min" style="width:70px;">
     </label>
     <label class="check-item" data-id="organizing">
-      <input type="checkbox">
-      <span class="label">Organisation / tri</span>
+      <input type="checkbox"><span class="label">Organisation / tri</span>
       <input type="number" class="home-minutes" data-task="organizing" min="0" placeholder="min" style="width:70px;">
     </label>
   </div>
@@ -62,41 +56,123 @@
       <h3>Régularité homecare</h3>
     </div>
   </div>
-  <div class="tile-grid" data-tilegrid="homecare_streak" data-count="30"></div>
+  <div class="tile-grid" id="homecareStreak"></div>
 </div>
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', ()=>{
-  const todayKey = new Date().toISOString().slice(0,10);
-  const storageKey = 'pl_homecare_' + todayKey;
-  const state = JSON.parse(localStorage.getItem(storageKey) || '{}');
-  const goal = 90;
+/* ══════════════════════════════════════════════
+   HOMECARE — synchronisation via API serveur
+   ══════════════════════════════════════════════ */
 
-  function updateTotal(){
-    let total = 0;
-    document.querySelectorAll('.home-minutes').forEach(inp=>{
-      total += parseInt(inp.value || '0', 10);
-    });
-    const wrap = document.getElementById('homeProgress');
-    const pct = Math.min(100, Math.round((total/goal)*100));
-    wrap.querySelector('.progress-fill').style.width = pct + '%';
-    wrap.querySelector('.progress-label').textContent = `${total} / ${goal} min`;
+function fmtDate(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+
+const TODAY    = new Date(); TODAY.setHours(0,0,0,0);
+const DATE_KEY = fmtDate(TODAY);
+const GOAL     = 90;
+
+let state = { checks: {}, minutes: {}, streak: {} };
+
+/* ── Charger ── */
+async function loadHomecare() {
+  try {
+    const res  = await fetch(`/api/homecare/${DATE_KEY}`);
+    const data = await res.json();
+    state.checks  = data.checks  || {};
+    state.minutes = data.minutes || {};
+    state.streak  = data.streak  || {};
+    render();
+  } catch(e) {
+    console.error('Erreur chargement homecare:', e);
   }
+}
 
-  document.querySelectorAll('.home-minutes').forEach(inp=>{
-    const task = inp.getAttribute('data-task');
-    if(typeof state[task] === 'number') inp.value = state[task];
-    inp.addEventListener('input', ()=>{
-      state[task] = parseInt(inp.value || '0', 10);
-      localStorage.setItem(storageKey, JSON.stringify(state));
-      updateTotal();
-      document.dispatchEvent(new CustomEvent('pl:update'));
-    });
+/* ── Sauvegarder données du jour ── */
+async function saveDay() {
+  // Calcule total minutes pour le streak
+  const total = Object.values(state.minutes).reduce((s, v) => s + (parseInt(v) || 0), 0);
+  state.streak[DATE_KEY] = total > 0;
+
+  await fetch('/api/homecare/day', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      date_key: DATE_KEY,
+      checks:   state.checks,
+      minutes:  state.minutes
+    })
   });
+
+  await fetch('/api/homecare/persist', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ streak: state.streak })
+  });
+
+  document.dispatchEvent(new CustomEvent('pl:update'));
+}
+
+function render() {
+  // Checkboxes + champs minutes
+  document.querySelectorAll('#homecareList .check-item').forEach(item => {
+    const id  = item.dataset.id;
+    const chk = item.querySelector('input[type="checkbox"]');
+    const inp = item.querySelector('.home-minutes');
+
+    chk.checked = !!state.checks[id];
+    if (inp) inp.value = state.minutes[inp.dataset.task] || '';
+
+    chk.onchange = () => {
+      state.checks[id] = chk.checked;
+      saveDay();
+    };
+
+    if (inp) {
+      inp.oninput = () => {
+        state.minutes[inp.dataset.task] = parseInt(inp.value || '0', 10);
+        updateTotal();
+        clearTimeout(inp._t);
+        inp._t = setTimeout(saveDay, 600);
+      };
+    }
+  });
+
   updateTotal();
-});
+  renderStreak();
+}
+
+function updateTotal() {
+  const total = Object.values(state.minutes).reduce((s, v) => s + (parseInt(v) || 0), 0);
+  const pct   = Math.min(100, Math.round((total / GOAL) * 100));
+  const wrap  = document.getElementById('homeProgress');
+  if (wrap) {
+    wrap.querySelector('.progress-fill').style.width  = pct + '%';
+    wrap.querySelector('.progress-label').textContent = `${total} / ${GOAL} min`;
+  }
+}
+
+function renderStreak() {
+  const grid = document.getElementById('homecareStreak');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key  = fmtDate(d);
+    const tile = document.createElement('span');
+    tile.className = 'tile' + (state.streak[key] ? ' on' : '');
+    tile.title     = key;
+    grid.appendChild(tile);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadHomecare);
 </script>
 {% endblock %}

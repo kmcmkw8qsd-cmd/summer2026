@@ -17,26 +17,23 @@
 
   <div class="field" style="max-width:420px;">
     <label for="langInput">Langue en cours</label>
-    <input type="text" id="langInput" placeholder="Ex : nom de la langue" data-persist="learning_lang">
+    <input type="text" id="langInput" placeholder="Ex : nom de la langue">
   </div>
 
-  <div class="checklist" data-checklist="langcheck" data-daily="true">
+  <div class="checklist" id="langChecks">
     <label class="check-item" data-id="speaking">
-      <input type="checkbox">
-      <span class="label">Speaking — pratique orale</span>
+      <input type="checkbox"><span class="label">Speaking — pratique orale</span>
     </label>
     <label class="check-item" data-id="writing">
-      <input type="checkbox">
-      <span class="label">Writing — pratique écrite</span>
+      <input type="checkbox"><span class="label">Writing — pratique écrite</span>
     </label>
     <label class="check-item" data-id="listening">
-      <input type="checkbox">
-      <span class="label">Listening / Reading</span>
+      <input type="checkbox"><span class="label">Listening / Reading</span>
     </label>
   </div>
 
   <div class="sub-title">Régularité (30 jours)</div>
-  <div class="tile-grid" data-tilegrid="lang_streak" data-count="30"></div>
+  <div class="tile-grid" id="langStreak"></div>
 </div>
 
 <div class="card">
@@ -47,22 +44,21 @@
     </div>
     <span class="icon-badge">🎯</span>
   </div>
-  <p class="card-note">Décris l'activité que tu apprends en ce moment (instrument, dessin, code, sport...).</p>
+  <p class="card-note">Décris l'activité que tu apprends en ce moment.</p>
 
   <div class="field" style="max-width:420px;">
     <label for="activityInput">Mon activité</label>
-    <input type="text" id="activityInput" placeholder="Ex : nom de l'activité" data-persist="learning_activity">
+    <input type="text" id="activityInput" placeholder="Ex : nom de l'activité">
   </div>
 
-  <div class="checklist" data-checklist="activity_today" data-daily="true">
+  <div class="checklist" id="activityChecks">
     <label class="check-item" data-id="practiced">
-      <input type="checkbox">
-      <span class="label">Pratiquée aujourd'hui</span>
+      <input type="checkbox"><span class="label">Pratiquée aujourd'hui</span>
     </label>
   </div>
 
   <div class="sub-title">Régularité (30 jours)</div>
-  <div class="tile-grid" data-tilegrid="activity_streak" data-count="30"></div>
+  <div class="tile-grid" id="activityStreak"></div>
 </div>
 
 <div class="card">
@@ -77,11 +73,175 @@
 
   <div class="field">
     <label for="cultureInput">Découverte du jour</label>
-    <input type="text" id="cultureInput" placeholder="Ex : ce que tu as découvert" data-persist="culture_today">
+    <input type="text" id="cultureInput" placeholder="Ex : ce que tu as découvert">
   </div>
 
   <div class="sub-title">Régularité (30 jours)</div>
-  <div class="tile-grid" data-tilegrid="culture_streak" data-count="30"></div>
+  <div class="tile-grid" id="cultureStreak"></div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ══════════════════════════════════════════════
+   LEARNING — synchronisation via API serveur
+   ══════════════════════════════════════════════ */
+
+function fmtDate(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+
+const TODAY    = new Date(); TODAY.setHours(0,0,0,0);
+const DATE_KEY = fmtDate(TODAY);
+
+let state = {
+  lang_checks:     {},
+  activity_done:   {},
+  culture_note:    '',
+  lang_name:       '',
+  activity_name:   '',
+  lang_streak:     {},
+  activity_streak: {},
+  culture_streak:  {},
+};
+
+/* ── Charger ── */
+async function loadLearning() {
+  try {
+    const res  = await fetch(`/api/learning/${DATE_KEY}`);
+    const data = await res.json();
+    state.lang_checks     = data.lang_checks     || {};
+    state.activity_done   = data.activity_done   || {};
+    state.culture_note    = data.culture_note    || '';
+    state.lang_name       = data.lang_name       || '';
+    state.activity_name   = data.activity_name   || '';
+    state.lang_streak     = data.lang_streak     || {};
+    state.activity_streak = data.activity_streak || {};
+    state.culture_streak  = data.culture_streak  || {};
+    render();
+  } catch(e) {
+    console.error('Erreur chargement learning:', e);
+  }
+}
+
+/* ── Sauvegarder données du jour ── */
+async function saveDay() {
+  // Mise à jour streaks du jour
+  state.lang_streak[DATE_KEY]     = Object.values(state.lang_checks).some(Boolean);
+  state.activity_streak[DATE_KEY] = !!state.activity_done['practiced'];
+  state.culture_streak[DATE_KEY]  = state.culture_note.trim().length > 0;
+
+  await fetch('/api/learning/day', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      date_key:      DATE_KEY,
+      lang_checks:   state.lang_checks,
+      activity_done: state.activity_done,
+      culture_note:  state.culture_note
+    })
+  });
+
+  await fetch('/api/learning/persist', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      lang_name:       state.lang_name,
+      activity_name:   state.activity_name,
+      lang_streak:     state.lang_streak,
+      activity_streak: state.activity_streak,
+      culture_streak:  state.culture_streak
+    })
+  });
+
+  document.dispatchEvent(new CustomEvent('pl:update'));
+}
+
+function render() {
+  // Langue name
+  const langEl = document.getElementById('langInput');
+  if (langEl) {
+    langEl.value = state.lang_name;
+    langEl.oninput = () => {
+      state.lang_name = langEl.value;
+      clearTimeout(langEl._t);
+      langEl._t = setTimeout(saveDay, 800);
+    };
+  }
+
+  // Lang checks
+  document.querySelectorAll('#langChecks .check-item').forEach(item => {
+    const id  = item.dataset.id;
+    const chk = item.querySelector('input[type="checkbox"]');
+    chk.checked = !!state.lang_checks[id];
+    chk.onchange = () => {
+      state.lang_checks[id] = chk.checked;
+      saveDay();
+      renderStreak('langStreak', state.lang_streak);
+    };
+  });
+
+  // Activity name
+  const actEl = document.getElementById('activityInput');
+  if (actEl) {
+    actEl.value = state.activity_name;
+    actEl.oninput = () => {
+      state.activity_name = actEl.value;
+      clearTimeout(actEl._t);
+      actEl._t = setTimeout(saveDay, 800);
+    };
+  }
+
+  // Activity checks
+  document.querySelectorAll('#activityChecks .check-item').forEach(item => {
+    const id  = item.dataset.id;
+    const chk = item.querySelector('input[type="checkbox"]');
+    chk.checked = !!state.activity_done[id];
+    chk.onchange = () => {
+      state.activity_done[id] = chk.checked;
+      saveDay();
+      renderStreak('activityStreak', state.activity_streak);
+    };
+  });
+
+  // Culture note
+  const cultEl = document.getElementById('cultureInput');
+  if (cultEl) {
+    cultEl.value = state.culture_note;
+    cultEl.oninput = () => {
+      state.culture_note = cultEl.value;
+      clearTimeout(cultEl._t);
+      cultEl._t = setTimeout(() => {
+        saveDay();
+        renderStreak('cultureStreak', state.culture_streak);
+      }, 800);
+    };
+  }
+
+  renderStreak('langStreak',     state.lang_streak);
+  renderStreak('activityStreak', state.activity_streak);
+  renderStreak('cultureStreak',  state.culture_streak);
+}
+
+function renderStreak(gridId, streakObj) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = '';
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key  = fmtDate(d);
+    const tile = document.createElement('span');
+    tile.className = 'tile' + (streakObj[key] ? ' on' : '');
+    tile.title     = key;
+    grid.appendChild(tile);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadLearning);
+</script>
 {% endblock %}

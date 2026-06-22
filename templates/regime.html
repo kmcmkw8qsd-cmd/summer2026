@@ -15,10 +15,10 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21c4-2.5 7-6 7-10.5A7 7 0 0 0 12 3a7 7 0 0 0-7 7.5C5 15 8 18.5 12 21Z"/></svg>
     </span>
   </div>
-  <p class="card-note">Décris ton objectif avec tes propres mots — c'est toi qui choisis le cadre qui te convient.</p>
+  <p class="card-note">Décris ton objectif avec tes propres mots.</p>
   <div class="field" style="max-width:420px;">
     <label for="goalInput">Mon objectif</label>
-    <input type="text" id="goalInput" placeholder="Ex : mon objectif personnel" data-persist="regime_goal">
+    <input type="text" id="goalInput" placeholder="Ex : mon objectif personnel">
   </div>
 </div>
 
@@ -30,9 +30,9 @@
     </div>
     <span class="icon-badge">📝</span>
   </div>
-  <p class="card-note">Écris librement ce que tu prévois ou as mangé aujourd'hui — repas, ressenti, ce que tu veux y noter.</p>
-  <textarea id="regimeJournal" rows="6" placeholder="Note libre du jour..." data-persist="regime_journal_today"></textarea>
-  <div class="checklist" data-checklist="regime_today" data-daily="true" style="margin-top:10px;">
+  <p class="card-note">Écris librement ce que tu prévois ou as mangé aujourd'hui.</p>
+  <textarea id="regimeJournal" rows="6" placeholder="Note libre du jour..."></textarea>
+  <div class="checklist" id="regimeChecks" style="margin-top:10px;">
     <label class="check-item" data-id="respected">
       <input type="checkbox">
       <span class="label">J'ai suivi mon objectif aujourd'hui</span>
@@ -48,32 +48,26 @@
     </div>
     <span class="icon-badge">🔥</span>
   </div>
-  <p class="card-note">Les 5 règles du jour. Une fois toutes cochées, marque la case du jour correspondant dans la grille ci-dessous.</p>
+  <p class="card-note">Les 5 règles du jour.</p>
 
-  <div class="checklist" data-checklist="hard_today" data-daily="true">
+  <div class="checklist" id="hardChecks">
     <label class="check-item" data-id="workout1">
-      <input type="checkbox">
-      <span class="label">1ʳᵉ séance de sport (45 min)</span>
+      <input type="checkbox"><span class="label">1ʳᵉ séance de sport (45 min)</span>
     </label>
     <label class="check-item" data-id="workout2">
-      <input type="checkbox">
-      <span class="label">2ᵉ séance de sport en extérieur (45 min)</span>
+      <input type="checkbox"><span class="label">2ᵉ séance de sport en extérieur (45 min)</span>
     </label>
     <label class="check-item" data-id="diet">
-      <input type="checkbox">
-      <span class="label">Respect de mon objectif, sans écart</span>
+      <input type="checkbox"><span class="label">Respect de mon objectif, sans écart</span>
     </label>
     <label class="check-item" data-id="water">
-      <input type="checkbox">
-      <span class="label">Objectif d'hydratation atteint</span>
+      <input type="checkbox"><span class="label">Objectif d'hydratation atteint</span>
     </label>
     <label class="check-item" data-id="reading">
-      <input type="checkbox">
-      <span class="label">10 pages de lecture (développement personnel)</span>
+      <input type="checkbox"><span class="label">10 pages de lecture (développement personnel)</span>
     </label>
     <label class="check-item" data-id="photo">
-      <input type="checkbox">
-      <span class="label">Photo de progression prise</span>
+      <input type="checkbox"><span class="label">Photo de progression prise</span>
     </label>
   </div>
 
@@ -82,7 +76,153 @@
     <div class="progress"><div class="progress-fill"></div></div>
     <span class="progress-label">0 / 75</span>
   </div>
-  <div class="tile-grid" data-tilegrid="75hard" data-count="75" data-progress-target="hardProgress"></div>
+  <div class="tile-grid" id="hard75Grid"></div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ══════════════════════════════════════════════
+   RÉGIME — synchronisation via API serveur
+   ══════════════════════════════════════════════ */
+
+function fmtDate(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+
+const TODAY    = new Date(); TODAY.setHours(0,0,0,0);
+const DATE_KEY = fmtDate(TODAY);
+
+let state = {
+  journal:   '',
+  checks:    {},   // {respected: true}
+  hard_data: {},   // {workout1: true, ...}
+  goal:      '',
+  hard75:    {},   // {1: true, ...}
+};
+
+/* ── Charger ── */
+async function loadRegime() {
+  try {
+    const res  = await fetch(`/api/regime/${DATE_KEY}`);
+    const data = await res.json();
+    state.journal   = data.journal   || '';
+    state.checks    = data.checks    || {};
+    state.hard_data = data.hard_data || {};
+    state.goal      = data.goal      || '';
+    state.hard75    = data.hard75    || {};
+    render();
+  } catch(e) {
+    console.error('Erreur chargement régime:', e);
+  }
+}
+
+/* ── Sauvegarder données du jour ── */
+async function saveDay() {
+  await fetch('/api/regime/day', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      date_key:  DATE_KEY,
+      journal:   state.journal,
+      checks:    state.checks,
+      hard_data: state.hard_data
+    })
+  });
+  document.dispatchEvent(new CustomEvent('pl:update'));
+}
+
+/* ── Sauvegarder données persistantes ── */
+async function savePersist() {
+  await fetch('/api/regime/persist', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ goal: state.goal, hard75: state.hard75 })
+  });
+}
+
+function render() {
+  // Objectif
+  const goalEl = document.getElementById('goalInput');
+  if (goalEl) {
+    goalEl.value = state.goal;
+    goalEl.oninput = () => {
+      state.goal = goalEl.value;
+      clearTimeout(goalEl._t);
+      goalEl._t = setTimeout(savePersist, 800);
+    };
+  }
+
+  // Journal
+  const journalEl = document.getElementById('regimeJournal');
+  if (journalEl) {
+    journalEl.value = state.journal;
+    journalEl.oninput = () => {
+      state.journal = journalEl.value;
+      clearTimeout(journalEl._t);
+      journalEl._t = setTimeout(saveDay, 800);
+    };
+  }
+
+  // Checks journal
+  document.querySelectorAll('#regimeChecks .check-item').forEach(item => {
+    const id  = item.dataset.id;
+    const chk = item.querySelector('input[type="checkbox"]');
+    chk.checked = !!state.checks[id];
+    chk.onchange = () => {
+      state.checks[id] = chk.checked;
+      saveDay();
+    };
+  });
+
+  // 75 Hard daily checks
+  document.querySelectorAll('#hardChecks .check-item').forEach(item => {
+    const id  = item.dataset.id;
+    const chk = item.querySelector('input[type="checkbox"]');
+    chk.checked = !!state.hard_data[id];
+    chk.onchange = () => {
+      state.hard_data[id] = chk.checked;
+      saveDay();
+    };
+  });
+
+  // Grille 75 Hard
+  renderHard75();
+}
+
+function renderHard75() {
+  const grid = document.getElementById('hard75Grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const done = Object.values(state.hard75).filter(Boolean).length;
+  for (let i = 1; i <= 75; i++) {
+    const tile = document.createElement('span');
+    tile.className = 'tile' + (state.hard75[i] ? ' on' : '');
+    tile.textContent = i;
+    tile.onclick = () => {
+      state.hard75[i] = !state.hard75[i];
+      tile.classList.toggle('on', state.hard75[i]);
+      updateHardProgress();
+      savePersist();
+    };
+    grid.appendChild(tile);
+  }
+  updateHardProgress();
+}
+
+function updateHardProgress() {
+  const done  = Object.values(state.hard75).filter(Boolean).length;
+  const pct   = Math.round((done / 75) * 100);
+  const wrap  = document.getElementById('hardProgress');
+  if (wrap) {
+    wrap.querySelector('.progress-fill').style.width  = pct + '%';
+    wrap.querySelector('.progress-label').textContent = `${done} / 75`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadRegime);
+</script>
 {% endblock %}

@@ -15,31 +15,25 @@
       </div>
       <span class="icon-badge">✨</span>
     </div>
-    <p class="card-note">Coche ce que tu as fait pour toi aujourd'hui — ajoute ou modifie selon ce qui te fait du bien.</p>
-    <div class="checklist" data-checklist="selfcare" data-daily="true">
+    <p class="card-note">Coche ce que tu as fait pour toi aujourd'hui.</p>
+    <div class="checklist" id="selfcareList">
       <label class="check-item" data-id="skincare">
-        <input type="checkbox">
-        <span class="label">Routine de soin du visage</span>
+        <input type="checkbox"><span class="label">Routine de soin du visage</span>
       </label>
       <label class="check-item" data-id="journal">
-        <input type="checkbox">
-        <span class="label">Journaling / gratitude</span>
+        <input type="checkbox"><span class="label">Journaling / gratitude</span>
       </label>
       <label class="check-item" data-id="breathing">
-        <input type="checkbox">
-        <span class="label">Respiration / méditation</span>
+        <input type="checkbox"><span class="label">Respiration / méditation</span>
       </label>
       <label class="check-item" data-id="screentime">
-        <input type="checkbox">
-        <span class="label">Pause écran respectée</span>
+        <input type="checkbox"><span class="label">Pause écran respectée</span>
       </label>
       <label class="check-item" data-id="sleep">
-        <input type="checkbox">
-        <span class="label">Coucher à l'heure prévue</span>
+        <input type="checkbox"><span class="label">Coucher à l'heure prévue</span>
       </label>
       <label class="check-item" data-id="metime">
-        <input type="checkbox">
-        <span class="label">Un moment juste pour moi</span>
+        <input type="checkbox"><span class="label">Un moment juste pour moi</span>
       </label>
     </div>
   </div>
@@ -62,7 +56,7 @@
     </div>
     <div class="field" style="margin-top:18px;">
       <label for="moodNote">Une ligne sur ma journée</label>
-      <textarea id="moodNote" rows="3" placeholder="Ce que je retiens d'aujourd'hui..." data-persist="mood_note_today"></textarea>
+      <textarea id="moodNote" rows="3" placeholder="Ce que je retiens d'aujourd'hui..."></textarea>
     </div>
   </div>
 
@@ -76,24 +70,125 @@
     </div>
   </div>
   <p class="card-note">Un coup d'œil sur ta constance ce mois-ci.</p>
-  <div class="tile-grid" data-tilegrid="selfcare_streak" data-count="30"></div>
+  <div class="tile-grid" id="selfcareStreak"></div>
 </div>
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  document.addEventListener('DOMContentLoaded', ()=>{
-    const key = 'pl_mood_' + new Date().toISOString().slice(0,10);
-    const saved = localStorage.getItem(key);
-    document.querySelectorAll('#moodRow .pill').forEach(p=>{
-      if(saved && p.getAttribute('data-mood') === saved) p.classList.add('on');
-      p.addEventListener('click', ()=>{
-        document.querySelectorAll('#moodRow .pill').forEach(x=>x.classList.remove('on'));
-        p.classList.add('on');
-        localStorage.setItem(key, p.getAttribute('data-mood'));
-      });
-    });
+/* ══════════════════════════════════════════════
+   SELFCARE — synchronisation via API serveur
+   ══════════════════════════════════════════════ */
+
+function fmtDate(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+
+const TODAY    = new Date(); TODAY.setHours(0,0,0,0);
+const DATE_KEY = fmtDate(TODAY);
+
+let state = { checks: {}, mood: '', mood_note: '', streak: {} };
+
+/* ── Charger ── */
+async function loadSelfcare() {
+  try {
+    const res  = await fetch(`/api/selfcare/${DATE_KEY}`);
+    const data = await res.json();
+    state.checks    = data.checks    || {};
+    state.mood      = data.mood      || '';
+    state.mood_note = data.mood_note || '';
+    state.streak    = data.streak    || {};
+    render();
+  } catch(e) {
+    console.error('Erreur chargement selfcare:', e);
+  }
+}
+
+/* ── Sauvegarder données du jour ── */
+async function saveDay() {
+  await fetch('/api/selfcare/day', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      date_key: DATE_KEY,
+      checks:   state.checks,
+      mood:     state.mood,
+      mood_note:state.mood_note
+    })
   });
+  document.dispatchEvent(new CustomEvent('pl:update'));
+}
+
+/* ── Sauvegarder streak ── */
+async function saveStreak() {
+  await fetch('/api/selfcare/persist', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ streak: state.streak })
+  });
+}
+
+function render() {
+  // Checkboxes
+  document.querySelectorAll('#selfcareList .check-item').forEach(item => {
+    const id  = item.dataset.id;
+    const chk = item.querySelector('input[type="checkbox"]');
+    chk.checked = !!state.checks[id];
+    chk.onchange = () => {
+      state.checks[id] = chk.checked;
+      // Met à jour streak du jour si au moins 1 case cochée
+      const anyDone = Object.values(state.checks).some(Boolean);
+      state.streak[DATE_KEY] = anyDone;
+      saveDay();
+      saveStreak();
+      renderStreak();
+    };
+  });
+
+  // Humeur
+  document.querySelectorAll('#moodRow .pill').forEach(p => {
+    p.classList.toggle('on', p.dataset.mood === state.mood);
+    p.onclick = () => {
+      state.mood = p.dataset.mood;
+      document.querySelectorAll('#moodRow .pill').forEach(x => x.classList.remove('on'));
+      p.classList.add('on');
+      saveDay();
+    };
+  });
+
+  // Note humeur
+  const noteEl = document.getElementById('moodNote');
+  if (noteEl) {
+    noteEl.value = state.mood_note;
+    noteEl.oninput = () => {
+      state.mood_note = noteEl.value;
+      clearTimeout(noteEl._t);
+      noteEl._t = setTimeout(saveDay, 800);
+    };
+  }
+
+  renderStreak();
+}
+
+function renderStreak() {
+  const grid = document.getElementById('selfcareStreak');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key  = fmtDate(d);
+    const tile = document.createElement('span');
+    tile.className = 'tile' + (state.streak[key] ? ' on' : '');
+    tile.title     = key;
+    grid.appendChild(tile);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadSelfcare);
 </script>
 {% endblock %}
