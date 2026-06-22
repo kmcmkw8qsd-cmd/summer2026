@@ -3,11 +3,21 @@ from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 from datetime import date, datetime
 import json
+import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'summer2026secretkey'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///planning2026.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# ── Upload config ────────────────────────────────────────────────────────────
+UPLOAD_FOLDER = os.path.join('static', 'uploads')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 db = SQLAlchemy(app)
 
@@ -18,32 +28,21 @@ USERS = {
     'sarah':    'sarah2026',
     'fifi':     'fifi2026',
     'khadidja': 'khadidja2026',
-    'mimi': 'mimi2026',
-    'hadjere': 'hadjere2026',
-    'kiki': 'kiki2026',
-    
+    'mimi':     'mimi2026',
+    'hadjere':  'hadjere2026',
+    'kiki':     'kiki2026',
 }
 
 # ══════════════════════════════════════════════
 # HELPER — week_key compatible avec le JS
-# Même algorithme que getWeekKey() dans les templates
-# Résultat ex: "2026-W26"
 # ══════════════════════════════════════════════
 
 def get_week_key(d_obj):
-    """
-    Calcule la clé semaine ISO au format 'YYYY-Www'
-    identique au calcul JS getWeekKey() utilisé dans les templates.
-    Lundi = début de semaine (ISO 8601).
-    """
     if isinstance(d_obj, str):
         d_obj = datetime.strptime(d_obj, '%Y-%m-%d')
     t = d_obj.replace(hour=0, minute=0, second=0, microsecond=0)
-    # Jour de semaine ISO : Lun=0 … Dim=6
-    dow = (t.weekday())  # Python: Lun=0, Dim=6 → déjà ISO
-    # Jeudi de la même semaine ISO (pivot de l'algorithme ISO 8601)
+    dow = t.weekday()
     thursday = t.toordinal() + (3 - dow)
-    # 4 janvier de l'année du jeudi → détermine l'année ISO
     thu_date = date.fromordinal(thursday)
     jan4 = date(thu_date.year, 1, 4)
     week_num = (thursday - jan4.toordinal()) // 7 + 1
@@ -61,13 +60,13 @@ class Profil(db.Model):
     bio          = db.Column(db.String(200), nullable=True)
     display_name = db.Column(db.String(50), nullable=True)
     member_since = db.Column(db.String(50), nullable=True)
+    gallery      = db.Column(db.Text, default='[]')           # JSON [{url, date, label}]
 
 class DeenData(db.Model):
     id           = db.Column(db.Integer, primary_key=True)
     username     = db.Column(db.String(50), nullable=False)
-    week_key     = db.Column(db.String(20), nullable=False)  # "2026-W26"
-    salat_data   = db.Column(db.Text, default='{}')          # JSON {fajr_0: true, ...}
-    # Persistants (pas liés à la semaine)
+    week_key     = db.Column(db.String(20), nullable=False)
+    salat_data   = db.Column(db.Text, default='{}')
     juzamma      = db.Column(db.Text, default='{}')
     quran_hizb   = db.Column(db.Text, default='{}')
     book_title   = db.Column(db.String(200), default='')
@@ -158,6 +157,18 @@ class HomecarePersist(db.Model):
     username = db.Column(db.String(50), unique=True, nullable=False)
     streak   = db.Column(db.Text, default='{}')
 
+class GoalItem(db.Model):
+    id         = db.Column(db.Integer, primary_key=True)
+    username   = db.Column(db.String(50), nullable=False)
+    goal_id    = db.Column(db.BigInteger, nullable=False)
+    category   = db.Column(db.String(30), nullable=False)
+    title      = db.Column(db.String(200), nullable=False)
+    quarter    = db.Column(db.String(10), default='year')
+    note       = db.Column(db.String(200), default='')
+    done       = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.String(20), default='')
+    __table_args__ = (db.UniqueConstraint('username', 'goal_id'),)
+
 
 # ══════════════════════════════════════════════
 # AUTH
@@ -243,6 +254,11 @@ def homecare():
 def profil():
     return render_template('profil.html')
 
+@app.route('/goals')
+@login_required
+def goals():
+    return render_template('goals.html')
+
 
 # ══════════════════════════════════════════════
 # API — PROFIL
@@ -259,7 +275,8 @@ def api_profil_get():
         'username':    p.display_name or u,
         'avatar':      p.avatar or '',
         'bio':         p.bio or '',
-        'memberSince': p.member_since or ''
+        'memberSince': p.member_since or '',
+        'gallery':     json.loads(p.gallery or '[]'),
     })
 
 @app.route('/api/profil', methods=['POST'])
@@ -271,11 +288,53 @@ def api_profil_save():
     if not p:
         p = Profil(username=u)
         db.session.add(p)
-    if 'username' in data:     p.display_name = data['username']
-    if 'avatar' in data:       p.avatar = data['avatar']
-    if 'bio' in data:          p.bio = data['bio']
-    if 'memberSince' in data:  p.member_since = data['memberSince']
+    if 'username'    in data: p.display_name = data['username']
+    if 'avatar'      in data: p.avatar       = data['avatar']
+    if 'bio'         in data: p.bio          = data['bio']
+    if 'memberSince' in data: p.member_since = data['memberSince']
+    if 'gallery'     in data: p.gallery      = json.dumps(data['gallery'])
     db.session.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/profil/gallery/upload', methods=['POST'])
+@login_required
+def api_gallery_upload():
+    u = session['username']
+    if 'photo' not in request.files:
+        return jsonify({'error': 'Aucun fichier'}), 400
+
+    file = request.files['photo']
+    if file.filename == '' or not allowed_file(file.filename):
+        return jsonify({'error': 'Fichier invalide'}), 400
+
+    # Dossier par utilisateur : static/uploads/<username>/
+    user_folder = os.path.join(app.config['UPLOAD_FOLDER'], u)
+    os.makedirs(user_folder, exist_ok=True)
+
+    ext      = file.filename.rsplit('.', 1)[1].lower()
+    filename = f"{int(datetime.utcnow().timestamp() * 1000)}.{ext}"
+    filepath = os.path.join(user_folder, filename)
+    file.save(filepath)
+
+    url = f"/static/uploads/{u}/{filename}"
+    return jsonify({'ok': True, 'url': url})
+
+
+@app.route('/api/profil/gallery/delete', methods=['POST'])
+@login_required
+def api_gallery_delete():
+    u = session['username']
+    data = request.get_json()
+    url  = data.get('url', '')
+
+    # Sécurité : le chemin doit appartenir à l'utilisateur
+    expected_prefix = f"/static/uploads/{u}/"
+    if url.startswith(expected_prefix):
+        filepath = url.lstrip('/')
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
     return jsonify({'ok': True})
 
 
@@ -287,12 +346,10 @@ def api_profil_save():
 @login_required
 def api_deen_get(week_key):
     u = session['username']
-    # Salat lié à la semaine demandée
-    d = DeenData.query.filter_by(username=u, week_key=week_key).first()
-    # Persistants : on prend le premier enregistrement (peu importe la semaine)
+    d     = DeenData.query.filter_by(username=u, week_key=week_key).first()
     any_d = DeenData.query.filter_by(username=u).first()
     return jsonify({
-        'salat':        json.loads(d.salat_data   if d     else '{}'),
+        'salat':        json.loads(d.salat_data    if d     else '{}'),
         'juzamma':      json.loads(any_d.juzamma   if any_d else '{}'),
         'quran_hizb':   json.loads(any_d.quran_hizb if any_d else '{}'),
         'book_title':   any_d.book_title            if any_d else '',
@@ -303,9 +360,7 @@ def api_deen_get(week_key):
 @login_required
 def api_deen_salat():
     u = session['username']
-    data = request.get_json()
-    # ✅ FIX: utilise get_week_key() si le client envoie une date,
-    #         sinon utilise directement le week_key envoyé par le JS
+    data     = request.get_json()
     week_key = data.get('week_key')
     d = DeenData.query.filter_by(username=u, week_key=week_key).first()
     if not d:
@@ -320,10 +375,8 @@ def api_deen_salat():
 def api_deen_persist():
     u = session['username']
     data = request.get_json()
-    # Persistants : on travaille toujours sur le premier enregistrement
     d = DeenData.query.filter_by(username=u).first()
     if not d:
-        # Crée avec la semaine courante comme anchor
         week_key = get_week_key(datetime.utcnow())
         d = DeenData(username=u, week_key=week_key)
         db.session.add(d)
@@ -342,8 +395,7 @@ def api_deen_persist():
 @app.route('/api/sport/<date_key>', methods=['GET'])
 @login_required
 def api_sport_get(date_key):
-    u = session['username']
-    # ✅ FIX: utilise get_week_key() au lieu de strftime('%G-W%V')
+    u        = session['username']
     week_key = get_week_key(date_key)
     s = SportData.query.filter_by(username=u, date_key=date_key).first()
     w = SportWeek.query.filter_by(username=u, week_key=week_key).first()
@@ -359,8 +411,8 @@ def api_sport_get(date_key):
 @app.route('/api/sport/day', methods=['POST'])
 @login_required
 def api_sport_day():
-    u = session['username']
-    data = request.get_json()
+    u        = session['username']
+    data     = request.get_json()
     date_key = data.get('date_key')
     s = SportData.query.filter_by(username=u, date_key=date_key).first()
     if not s:
@@ -376,8 +428,8 @@ def api_sport_day():
 @app.route('/api/sport/gym', methods=['POST'])
 @login_required
 def api_sport_gym():
-    u = session['username']
-    data = request.get_json()
+    u        = session['username']
+    data     = request.get_json()
     week_key = data.get('week_key')
     w = SportWeek.query.filter_by(username=u, week_key=week_key).first()
     if not w:
@@ -409,8 +461,8 @@ def api_regime_get(date_key):
 @app.route('/api/regime/day', methods=['POST'])
 @login_required
 def api_regime_day():
-    u = session['username']
-    data = request.get_json()
+    u        = session['username']
+    data     = request.get_json()
     date_key = data.get('date_key')
     r = RegimeData.query.filter_by(username=u, date_key=date_key).first()
     if not r:
@@ -425,7 +477,7 @@ def api_regime_day():
 @app.route('/api/regime/persist', methods=['POST'])
 @login_required
 def api_regime_persist():
-    u = session['username']
+    u    = session['username']
     data = request.get_json()
     p = RegimePersist.query.filter_by(username=u).first()
     if not p:
@@ -461,8 +513,8 @@ def api_learning_get(date_key):
 @app.route('/api/learning/day', methods=['POST'])
 @login_required
 def api_learning_day():
-    u = session['username']
-    data = request.get_json()
+    u        = session['username']
+    data     = request.get_json()
     date_key = data.get('date_key')
     l = LearningData.query.filter_by(username=u, date_key=date_key).first()
     if not l:
@@ -477,17 +529,17 @@ def api_learning_day():
 @app.route('/api/learning/persist', methods=['POST'])
 @login_required
 def api_learning_persist():
-    u = session['username']
+    u    = session['username']
     data = request.get_json()
     p = LearningPersist.query.filter_by(username=u).first()
     if not p:
         p = LearningPersist(username=u)
         db.session.add(p)
-    if 'lang_name'        in data: p.lang_name        = data['lang_name']
-    if 'activity_name'    in data: p.activity_name    = data['activity_name']
-    if 'lang_streak'      in data: p.lang_streak      = json.dumps(data['lang_streak'])
-    if 'activity_streak'  in data: p.activity_streak  = json.dumps(data['activity_streak'])
-    if 'culture_streak'   in data: p.culture_streak   = json.dumps(data['culture_streak'])
+    if 'lang_name'       in data: p.lang_name        = data['lang_name']
+    if 'activity_name'   in data: p.activity_name    = data['activity_name']
+    if 'lang_streak'     in data: p.lang_streak      = json.dumps(data['lang_streak'])
+    if 'activity_streak' in data: p.activity_streak  = json.dumps(data['activity_streak'])
+    if 'culture_streak'  in data: p.culture_streak   = json.dumps(data['culture_streak'])
     db.session.commit()
     return jsonify({'ok': True})
 
@@ -512,8 +564,8 @@ def api_selfcare_get(date_key):
 @app.route('/api/selfcare/day', methods=['POST'])
 @login_required
 def api_selfcare_day():
-    u = session['username']
-    data = request.get_json()
+    u        = session['username']
+    data     = request.get_json()
     date_key = data.get('date_key')
     s = SelfcareData.query.filter_by(username=u, date_key=date_key).first()
     if not s:
@@ -528,7 +580,7 @@ def api_selfcare_day():
 @app.route('/api/selfcare/persist', methods=['POST'])
 @login_required
 def api_selfcare_persist():
-    u = session['username']
+    u    = session['username']
     data = request.get_json()
     p = SelfcarePersist.query.filter_by(username=u).first()
     if not p:
@@ -558,8 +610,8 @@ def api_homecare_get(date_key):
 @app.route('/api/homecare/day', methods=['POST'])
 @login_required
 def api_homecare_day():
-    u = session['username']
-    data = request.get_json()
+    u        = session['username']
+    data     = request.get_json()
     date_key = data.get('date_key')
     h = HomecareData.query.filter_by(username=u, date_key=date_key).first()
     if not h:
@@ -573,7 +625,7 @@ def api_homecare_day():
 @app.route('/api/homecare/persist', methods=['POST'])
 @login_required
 def api_homecare_persist():
-    u = session['username']
+    u    = session['username']
     data = request.get_json()
     p = HomecarePersist.query.filter_by(username=u).first()
     if not p:
@@ -585,83 +637,46 @@ def api_homecare_persist():
 
 
 # ══════════════════════════════════════════════
-# API — DASHBOARD (données agrégées)
+# API — DASHBOARD
 # ══════════════════════════════════════════════
 
 @app.route('/api/dashboard/<date_key>', methods=['GET'])
 @login_required
 def api_dashboard(date_key):
-    u = session['username']
-
-    # ✅ FIX PRINCIPAL : utilise get_week_key() — même algorithme que le JS
+    u        = session['username']
     week_key = get_week_key(date_key)
 
-    # Salat — cherche avec le bon week_key
-    deen = DeenData.query.filter_by(username=u, week_key=week_key).first()
-    salat = json.loads(deen.salat_data if deen else '{}')
-
-    # Sport
+    deen       = DeenData.query.filter_by(username=u, week_key=week_key).first()
+    salat      = json.loads(deen.salat_data if deen else '{}')
     sport      = SportData.query.filter_by(username=u, date_key=date_key).first()
     sport_week = SportWeek.query.filter_by(username=u, week_key=week_key).first()
-
-    # Régime
-    regime = RegimeData.query.filter_by(username=u, date_key=date_key).first()
-
-    # Learning
-    learning = LearningData.query.filter_by(username=u, date_key=date_key).first()
-
-    # Selfcare
-    sc = SelfcareData.query.filter_by(username=u, date_key=date_key).first()
-
-    # Homecare
-    hc = HomecareData.query.filter_by(username=u, date_key=date_key).first()
+    regime     = RegimeData.query.filter_by(username=u, date_key=date_key).first()
+    learning   = LearningData.query.filter_by(username=u, date_key=date_key).first()
+    sc         = SelfcareData.query.filter_by(username=u, date_key=date_key).first()
+    hc         = HomecareData.query.filter_by(username=u, date_key=date_key).first()
     hc_minutes = json.loads(hc.minutes if hc else '{}')
-    hc_min = sum(v for v in hc_minutes.values() if isinstance(v, (int, float)))
+    hc_min     = sum(v for v in hc_minutes.values() if isinstance(v, (int, float)))
 
     return jsonify({
-        'salat':             salat,
-        'steps':             sport.steps if sport else 0,
-        'water':             sport.water if sport else 0,
-        'gym_days':          json.loads(sport_week.gym_days if sport_week else '[]'),
-        'regime_checks':     json.loads(regime.checks if regime else '{}'),
-        'learning_checks':   json.loads(learning.lang_checks if learning else '{}'),
-        'selfcare_checks':   json.loads(sc.checks if sc else '{}'),
-        'homecare_min':      hc_min,
+        'salat':           salat,
+        'steps':           sport.steps if sport else 0,
+        'water':           sport.water if sport else 0,
+        'gym_days':        json.loads(sport_week.gym_days if sport_week else '[]'),
+        'regime_checks':   json.loads(regime.checks if regime else '{}'),
+        'learning_checks': json.loads(learning.lang_checks if learning else '{}'),
+        'selfcare_checks': json.loads(sc.checks if sc else '{}'),
+        'homecare_min':    hc_min,
     })
 
+
 # ══════════════════════════════════════════════
-# À AJOUTER dans app.py
+# API — GOALS
 # ══════════════════════════════════════════════
-
-# ── 1. Nouveau modèle (ajoute avec les autres modèles) ──────────────────────
-
-class GoalItem(db.Model):
-    id         = db.Column(db.Integer, primary_key=True)
-    username   = db.Column(db.String(50), nullable=False)
-    goal_id    = db.Column(db.BigInteger, nullable=False)   # timestamp JS
-    category   = db.Column(db.String(30), nullable=False)   # deen, sport, etc.
-    title      = db.Column(db.String(200), nullable=False)
-    quarter    = db.Column(db.String(10), default='year')   # q1/q2/q3/q4/year
-    note       = db.Column(db.String(200), default='')
-    done       = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.String(20), default='')
-    __table_args__ = (db.UniqueConstraint('username', 'goal_id'),)
-
-
-# ── 2. Nouvelle page (ajoute avec les autres routes de pages) ───────────────
-
-@app.route('/goals')
-@login_required
-def goals():
-    return render_template('goals.html')
-
-
-# ── 3. API Goals (ajoute avec les autres APIs) ──────────────────────────────
 
 @app.route('/api/goals', methods=['GET'])
 @login_required
 def api_goals_get():
-    u = session['username']
+    u     = session['username']
     items = GoalItem.query.filter_by(username=u).order_by(GoalItem.id).all()
     return jsonify([{
         'id':       g.goal_id,
@@ -672,12 +687,11 @@ def api_goals_get():
         'done':     g.done,
     } for g in items])
 
-
 @app.route('/api/goals', methods=['POST'])
 @login_required
 def api_goals_save():
-    u = session['username']
-    data = request.get_json()
+    u       = session['username']
+    data    = request.get_json()
     goal_id = int(data.get('id'))
     g = GoalItem.query.filter_by(username=u, goal_id=goal_id).first()
     if not g:
@@ -692,11 +706,10 @@ def api_goals_save():
     db.session.commit()
     return jsonify({'ok': True})
 
-
-@app.route("/api/goals/<string:goal_id>/toggle", methods=["POST"])
+@app.route('/api/goals/<string:goal_id>/toggle', methods=['POST'])
 @login_required
 def api_goals_toggle(goal_id):
-    u = session['username']
+    u       = session['username']
     goal_id = int(goal_id)
     g = GoalItem.query.filter_by(username=u, goal_id=goal_id).first()
     if g:
@@ -704,11 +717,10 @@ def api_goals_toggle(goal_id):
         db.session.commit()
     return jsonify({'ok': True, 'done': g.done if g else False})
 
-
-@app.route("/api/goals/<string:goal_id>", methods=["DELETE"])
+@app.route('/api/goals/<string:goal_id>', methods=['DELETE'])
 @login_required
 def api_goals_delete(goal_id):
-    u = session['username']
+    u       = session['username']
     goal_id = int(goal_id)
     g = GoalItem.query.filter_by(username=u, goal_id=goal_id).first()
     if g:
@@ -717,13 +729,13 @@ def api_goals_delete(goal_id):
     return jsonify({'ok': True})
 
 
-
 # ══════════════════════════════════════════════
 # INIT DB + RUN
 # ══════════════════════════════════════════════
 
 with app.app_context():
     db.create_all()
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=2003, debug=True)

@@ -62,7 +62,161 @@
 .profil-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(16px); background:var(--surface); border:1px solid #4ade80; color:#4ade80; font-size:13px; font-weight:600; padding:11px 22px; border-radius:30px; box-shadow:0 4px 20px rgba(0,0,0,.5); opacity:0; transition:all .3s; pointer-events:none; z-index:999; }
 .profil-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 .profil-member-badge { display:inline-flex; align-items:center; gap:6px; background:var(--accent-pale); border:1px solid var(--accent-l); border-radius:20px; padding:4px 12px; font-size:12px; color:var(--accent); font-weight:500; margin-bottom:12px; }
-@media (max-width:560px) { .profil-card { padding:0 16px 28px; } .profil-info-grid { grid-template-columns:1fr; } .profil-name-display { font-size:20px; } }
+
+/* ── Galerie de progression ── */
+.progress-gallery { margin-bottom:24px; }
+.progress-gallery-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.btn-add-photo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent-pale);
+  border: 1px solid var(--accent-l);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.btn-add-photo:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+#galleryFileInput { display: none; }
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.gallery-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 32px 16px;
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.gallery-empty .gallery-empty-ico { font-size: 2rem; display: block; margin-bottom: 8px; }
+
+.gallery-item {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  aspect-ratio: 1 / 1;
+  cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+}
+.gallery-item:hover { transform: scale(1.02); box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+.gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.gallery-item-date {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,.65));
+  color: #fff;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 14px 8px 6px;
+  text-align: center;
+  line-height: 1.2;
+}
+.gallery-item-del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  background: rgba(0,0,0,.55);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.gallery-item:hover .gallery-item-del { opacity: 1; }
+
+/* ── Lightbox ── */
+.gallery-lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.88);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+}
+.gallery-lightbox.open { display: flex; }
+.gallery-lightbox img {
+  max-width: 90vw;
+  max-height: 75vh;
+  border-radius: 12px;
+  object-fit: contain;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+.gallery-lightbox-date {
+  color: rgba(255,255,255,.7);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.gallery-lightbox-close {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(255,255,255,.15);
+  border: none;
+  color: #fff;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s;
+}
+.gallery-lightbox-close:hover { background: rgba(255,255,255,.3); }
+
+/* ── Upload spinner ── */
+.gallery-uploading {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 16px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+@media (max-width:560px) {
+  .profil-card { padding:0 16px 28px; }
+  .profil-info-grid { grid-template-columns:1fr; }
+  .profil-name-display { font-size:20px; }
+  .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+}
 </style>
 {% endblock %}
 
@@ -159,6 +313,26 @@
       </div>
     </div>
 
+    <!-- 📸 Galerie de progression -->
+    <div class="progress-gallery">
+      <div class="progress-gallery-head">
+        <div class="profil-section-label" style="margin-bottom:0">Photos de progression</div>
+        <label class="btn-add-photo" for="galleryFileInput">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Ajouter une photo
+        </label>
+        <input type="file" id="galleryFileInput" accept="image/*" multiple/>
+      </div>
+      <div class="gallery-grid" id="galleryGrid">
+        <div class="gallery-empty" id="galleryEmpty">
+          <span class="gallery-empty-ico">📷</span>
+          Aucune photo encore — ajoute ta première photo de progression !
+        </div>
+      </div>
+    </div>
+
+    <div class="profil-divider"></div>
+
     <div class="profil-bio">
       <div class="profil-section-label">Bio</div>
       <textarea class="profil-bio-field" id="bioField" placeholder="Quelques mots sur vous…" maxlength="200" rows="3"></textarea>
@@ -167,6 +341,13 @@
 
     <button class="profil-save-btn" id="saveAllBtn">💾 Sauvegarder le profil</button>
   </div>
+</div>
+
+<!-- Lightbox -->
+<div class="gallery-lightbox" id="galleryLightbox">
+  <button class="gallery-lightbox-close" id="lightboxClose">✕</button>
+  <img id="lightboxImg" src="" alt="Photo de progression"/>
+  <div class="gallery-lightbox-date" id="lightboxDate"></div>
 </div>
 
 <div class="profil-toast" id="profilToast">✓ Profil mis à jour</div>
@@ -192,7 +373,6 @@ function getWeekKey(d) {
 
 const TODAY    = new Date(); TODAY.setHours(0,0,0,0);
 const DATE_KEY = fmtDate(TODAY);
-const WEEK_KEY = getWeekKey(TODAY);
 const DAY_IDX  = (TODAY.getDay()+6)%7;
 
 /* ── Toast ── */
@@ -218,7 +398,6 @@ function setAvatar(src) {
     avatarPhoto.style.display = 'none';
     avatarInitial.style.display = '';
   }
-  // Sidebar
   const sb = document.getElementById('sidebarAvatar');
   if (sb) {
     if (src) {
@@ -243,7 +422,7 @@ document.getElementById('avatarFileInput').addEventListener('change', e => {
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ avatar: ev.target.result })
     });
-    showToast('📸 Photo mise à jour !');
+    showToast('📸 Photo de profil mise à jour !');
   };
   r.readAsDataURL(f);
   e.target.value = '';
@@ -315,7 +494,147 @@ bioField.addEventListener('input', () => {
   bioCC.className   = 'char-count' + (n >= 180 ? (n >= 200 ? ' over' : ' warn') : '');
 });
 
-/* ── Sauvegarder tout ── */
+/* ══════════════════════════════════════════════
+   📸 GALERIE DE PROGRESSION — fichiers serveur
+   ══════════════════════════════════════════════ */
+
+// photos = [{url: '/static/uploads/kiki/123.jpg', date: '2026-06-22', label: '22 juin 2026'}, ...]
+let galleryPhotos = [];
+
+function renderGallery() {
+  const grid = document.getElementById('galleryGrid');
+  grid.innerHTML = '';
+
+  if (!galleryPhotos.length) {
+    grid.innerHTML = `<div class="gallery-empty">
+      <span class="gallery-empty-ico">📷</span>
+      Aucune photo encore — ajoute ta première photo de progression !
+    </div>`;
+    return;
+  }
+
+  // Afficher du plus récent au plus ancien
+  const sorted = [...galleryPhotos].sort((a, b) => b.date.localeCompare(a.date));
+
+  sorted.forEach(photo => {
+    const origIdx = galleryPhotos.findIndex(p => p.url === photo.url);
+
+    const item = document.createElement('div');
+    item.className = 'gallery-item';
+
+    const img = document.createElement('img');
+    img.src     = photo.url;
+    img.alt     = photo.label;
+    img.loading = 'lazy';
+
+    const dateEl = document.createElement('div');
+    dateEl.className   = 'gallery-item-date';
+    dateEl.textContent = photo.label;
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'gallery-item-del';
+    delBtn.title     = 'Supprimer';
+    delBtn.innerHTML = '×';
+    delBtn.onclick = async (e) => {
+      e.stopPropagation();
+      // 1. Supprimer le fichier physique sur le serveur
+      await fetch('/api/profil/gallery/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ url: photo.url })
+      });
+      // 2. Retirer de la liste locale
+      galleryPhotos.splice(origIdx, 1);
+      renderGallery();
+      // 3. Mettre à jour la DB (liste des métadonnées)
+      await saveGallery();
+      showToast('Photo supprimée');
+    };
+
+    item.appendChild(img);
+    item.appendChild(dateEl);
+    item.appendChild(delBtn);
+    item.addEventListener('click', () => openLightbox(photo));
+    grid.appendChild(item);
+  });
+}
+
+async function saveGallery() {
+  // Sauvegarde uniquement les métadonnées (url, date, label) — pas de base64
+  await fetch('/api/profil', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ gallery: galleryPhotos })
+  });
+}
+
+// ── Upload via FormData (fichier réel, pas base64) ──
+document.getElementById('galleryFileInput').addEventListener('change', async e => {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  const today = DATE_KEY;
+  const label = TODAY.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+
+  // Afficher un indicateur de chargement
+  const grid = document.getElementById('galleryGrid');
+  const spinner = document.createElement('div');
+  spinner.className = 'gallery-uploading';
+  spinner.textContent = `⏳ Upload en cours… (0/${files.length})`;
+  grid.appendChild(spinner);
+
+  let added = 0;
+  for (const f of files) {
+    const formData = new FormData();
+    formData.append('photo', f);
+
+    try {
+      const res  = await fetch('/api/profil/gallery/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (data.ok && data.url) {
+        galleryPhotos.push({ url: data.url, date: today, label });
+        added++;
+        spinner.textContent = `⏳ Upload en cours… (${added}/${files.length})`;
+      }
+    } catch (err) {
+      console.error('Erreur upload:', err);
+    }
+  }
+
+  if (added) {
+    renderGallery();
+    await saveGallery();
+    showToast(`📸 ${added} photo${added > 1 ? 's' : ''} ajoutée${added > 1 ? 's' : ''} — ${label}`);
+  } else {
+    renderGallery();
+    showToast('❌ Erreur lors de l\'upload');
+  }
+
+  e.target.value = '';
+});
+
+/* ── Lightbox ── */
+const lightbox     = document.getElementById('galleryLightbox');
+const lightboxImg  = document.getElementById('lightboxImg');
+const lightboxDate = document.getElementById('lightboxDate');
+
+function openLightbox(photo) {
+  lightboxImg.src          = photo.url;   // ← url (pas src)
+  lightboxDate.textContent = photo.label;
+  lightbox.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  lightbox.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+/* ── Sauvegarder bio ── */
 document.getElementById('saveAllBtn').addEventListener('click', async () => {
   await fetch('/api/profil', {
     method: 'POST',
@@ -331,16 +650,11 @@ async function loadStats() {
     const res  = await fetch(`/api/dashboard/${DATE_KEY}`);
     const data = await res.json();
 
-    // Salat aujourd'hui
     const PRAYERS = ['fajr','dhuhr','asr','maghrib','isha'];
     const sd = PRAYERS.filter(p => data.salat && data.salat[`${p}_${DAY_IDX}`]).length;
     document.getElementById('pStatSalat').textContent = `${sd}/5`;
-
-    // Eau
     document.getElementById('pStatWater').textContent = data.water || 0;
-
-    // Gym
-    document.getElementById('pStatGym').textContent = `${(data.gym_days || []).length}/5`;
+    document.getElementById('pStatGym').textContent   = `${(data.gym_days || []).length}/5`;
   } catch(e) {}
 }
 
@@ -351,20 +665,22 @@ async function loadProfil() {
     const data = await res.json();
 
     if (data.avatar) setAvatar(data.avatar);
+
     if (data.username) {
-      nameDisplay.textContent = data.username;
-      avatarInitial.textContent = data.username.charAt(0).toUpperCase();
+      nameDisplay.textContent       = data.username;
+      avatarInitial.textContent     = data.username.charAt(0).toUpperCase();
       const sbName = document.getElementById('sidebarName');
       if (sbName) sbName.textContent = data.username;
     }
+
     if (data.bio) {
-      bioField.value = data.bio;
+      bioField.value    = data.bio;
       bioCC.textContent = `${data.bio.length} / 200`;
     }
+
     if (data.memberSince) {
       document.getElementById('pMemberSince').textContent = data.memberSince;
     } else {
-      // Première visite : enregistre la date membre
       const since = TODAY.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
       document.getElementById('pMemberSince').textContent = since;
       await fetch('/api/profil', {
@@ -373,6 +689,13 @@ async function loadProfil() {
         body: JSON.stringify({ memberSince: since })
       });
     }
+
+    // ── Charger la galerie (liste de {url, date, label}) ──
+    if (Array.isArray(data.gallery)) {
+      galleryPhotos = data.gallery;
+    }
+    renderGallery();
+
   } catch(e) {}
 }
 
