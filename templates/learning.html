@@ -234,12 +234,16 @@ function renderStreak(gridId, streakObj) {
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const key  = fmtDate(d);
+
+    const key = fmtDate(d);
+
     const tile = document.createElement('span');
-    tile.className = 'tile' + (streakObj[key] ? ' on' : '');
-    tile.title     = key;
+    tile.className = 'tile' + (streakObj[key] ? ' done' : '');
+    tile.textContent = 30 - i;
+    tile.title = key;
+
     grid.appendChild(tile);
-  }
+}
 }
 
 document.addEventListener('DOMContentLoaded', loadLearning);
