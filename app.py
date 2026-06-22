@@ -18,7 +18,7 @@ USERS = {
     'sarah':    'sarah2026',
     'fifi':     'fifi2026',
     'khadidja': 'khadidja2026',
-    'mimi':     'mimi2026',
+    'mimi': 'mimi2026',
     'hadjere': 'hadjere2026',
     
 }
@@ -692,10 +692,11 @@ def api_goals_save():
     return jsonify({'ok': True})
 
 
-@app.route('/api/goals/<int:goal_id>/toggle', methods=['POST'])
+@app.route("/api/goals/<string:goal_id>/toggle", methods=["POST"])
 @login_required
 def api_goals_toggle(goal_id):
     u = session['username']
+    goal_id = int(goal_id)
     g = GoalItem.query.filter_by(username=u, goal_id=goal_id).first()
     if g:
         g.done = not g.done
@@ -703,10 +704,11 @@ def api_goals_toggle(goal_id):
     return jsonify({'ok': True, 'done': g.done if g else False})
 
 
-@app.route('/api/goals/<int:goal_id>', methods=['DELETE'])
+@app.route("/api/goals/<string:goal_id>", methods=["DELETE"])
 @login_required
 def api_goals_delete(goal_id):
     u = session['username']
+    goal_id = int(goal_id)
     g = GoalItem.query.filter_by(username=u, goal_id=goal_id).first()
     if g:
         db.session.delete(g)
