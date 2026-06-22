@@ -18,7 +18,7 @@ USERS = {
     'sarah':    'sarah2026',
     'fifi':     'fifi2026',
     'khadidja': 'khadidja2026',
-    'mimi': 'mimi2026',
+    'mimi':     'mimi2026',
     'hadjere': 'hadjere2026',
     
 }
