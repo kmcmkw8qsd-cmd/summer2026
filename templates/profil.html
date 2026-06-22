@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+{% block title %}Mon Profil — Planning 2026{% endblock %}
+{% block page_title %}Mon Profil{% endblock %}
+{% block page_subtitle %}Photo, nom d'utilisateur et statistiques{% endblock %}
+
+{% block extra_css %}
+<style>
+.profil-wrap { max-width:680px; margin:0 auto; display:flex; flex-direction:column; gap:20px; }
+.profil-banner { width:100%; height:140px; background:linear-gradient(135deg,var(--primary-d) 0%,#1a0d2e 100%); border-radius:var(--radius-l); position:relative; overflow:hidden; border:1px solid var(--line); }
+.profil-banner::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse 60% 80% at 20% 50%,rgba(200,149,75,.15) 0%,transparent 70%),radial-gradient(ellipse 40% 60% at 80% 30%,rgba(239,233,220,.06) 0%,transparent 70%); }
+.profil-banner-dots { position:absolute; inset:0; background-image:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1px); background-size:26px 26px; }
+.profil-card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-l); padding:0 32px 36px; margin-top:-52px; position:relative; z-index:2; }
+.profil-avatar-zone { display:flex; align-items:flex-end; gap:18px; margin-top:-46px; margin-bottom:24px; }
+.profil-avatar-wrap { position:relative; flex-shrink:0; }
+.profil-avatar-ring { width:96px; height:96px; border-radius:50%; padding:3px; background:linear-gradient(135deg,var(--accent),var(--primary-l)); box-shadow:0 0 0 3px var(--surface),0 8px 24px rgba(0,0,0,.4); }
+.profil-avatar-inner { width:100%; height:100%; border-radius:50%; background:var(--primary-d); display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+.profil-avatar-initial { font-family:var(--font-display); font-size:34px; font-weight:700; color:var(--accent); line-height:1; user-select:none; }
+.profil-avatar-photo { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:50%; display:none; }
+.profil-avatar-edit { position:absolute; bottom:1px; right:1px; width:28px; height:28px; background:var(--accent); border:2px solid var(--surface); border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .2s,transform .15s; box-shadow:0 2px 8px rgba(0,0,0,.3); }
+.profil-avatar-edit:hover { background:var(--primary-l); transform:scale(1.1); }
+.profil-avatar-edit svg { width:13px; height:13px; fill:#fff; }
+#avatarFileInput { display:none; }
+.profil-avatar-actions { display:flex; flex-direction:column; gap:6px; padding-top:52px; }
+.btn-remove { font-family:var(--font-body); font-size:12px; color:var(--ink-soft); background:none; border:1px solid var(--line); border-radius:8px; padding:6px 14px; cursor:pointer; transition:all .2s; white-space:nowrap; }
+.btn-remove:hover { border-color:#f87171; color:#f87171; }
+.profil-section-label { font-family:var(--font-mono); font-size:0.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:8px; }
+.profil-name-row { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+.profil-name-display { font-family:var(--font-display); font-size:26px; font-weight:600; color:var(--primary-d); flex:1; word-break:break-word; }
+.profil-edit-btn { background:var(--surface-2); border:1px solid var(--line); border-radius:10px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .2s; flex-shrink:0; }
+.profil-edit-btn:hover { border-color:var(--accent); background:var(--accent-pale); }
+.profil-edit-btn svg { width:15px; height:15px; stroke:var(--ink-soft); fill:none; transition:stroke .2s; }
+.profil-edit-btn:hover svg { stroke:var(--accent); }
+.profil-edit-wrap { display:none; margin-bottom:24px; }
+.profil-edit-wrap.open { display:block; }
+.profil-edit-input { width:100%; background:var(--surface-2); border:1.5px solid var(--accent); border-radius:10px; padding:12px 16px; font-family:var(--font-body); font-size:15px; color:var(--primary-d); outline:none; transition:box-shadow .2s; }
+.profil-edit-input:focus { box-shadow:0 0 0 3px var(--accent-pale); }
+.profil-edit-actions { display:flex; gap:10px; margin-top:10px; }
+.btn-save-name { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:9px 20px; font-size:13px; font-weight:600; font-family:var(--font-body); cursor:pointer; transition:all .2s; }
+.btn-save-name:hover { background:var(--primary-l); }
+.btn-cancel-name { background:transparent; color:var(--ink-soft); border:1px solid var(--line); border-radius:8px; padding:9px 16px; font-size:13px; font-family:var(--font-body); cursor:pointer; }
+.char-count { font-family:var(--font-mono); font-size:11px; color:var(--ink-soft); margin-top:5px; text-align:right; }
+.char-count.warn { color:var(--accent); }
+.char-count.over { color:#f87171; }
+.profil-divider { height:1px; background:var(--line); margin:22px 0; }
+.profil-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); border-radius:12px; overflow:hidden; margin-bottom:24px; border:1px solid var(--line); }
+.profil-stat { background:var(--surface-2); padding:16px 10px; text-align:center; }
+.profil-stat-val { font-family:var(--font-display); font-size:20px; color:var(--primary-d); display:block; line-height:1; margin-bottom:4px; }
+.profil-stat-lbl { font-size:11px; color:var(--ink-soft); font-weight:500; }
+.profil-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px; }
+.profil-info-card { background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:12px; }
+.profil-info-ico { width:34px; height:34px; border-radius:9px; background:var(--accent-pale); display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+.profil-info-title { font-size:11px; color:var(--ink-soft); margin-bottom:2px; }
+.profil-info-val { font-size:13px; font-weight:600; color:var(--primary-d); }
+.profil-badges { margin-bottom:24px; }
+.profil-badges-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.profil-badge { display:inline-flex; align-items:center; gap:5px; padding:6px 12px; border-radius:30px; font-size:12px; font-weight:600; border:1px solid var(--accent-l); background:var(--accent-pale); color:var(--accent); }
+.profil-bio { margin-bottom:24px; }
+.profil-bio-field { width:100%; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:12px 16px; font-family:var(--font-body); font-size:13px; color:var(--primary-d); outline:none; resize:vertical; min-height:72px; transition:border-color .2s; margin-top:8px; line-height:1.6; }
+.profil-bio-field:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-pale); }
+.profil-save-btn { width:100%; background:linear-gradient(135deg,var(--primary),var(--accent)); color:#fff; border:none; border-radius:12px; padding:15px; font-size:14px; font-weight:600; font-family:var(--font-body); cursor:pointer; letter-spacing:.02em; transition:all .25s; }
+.profil-save-btn:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(200,149,75,.35); }
+.profil-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(16px); background:var(--surface); border:1px solid #4ade80; color:#4ade80; font-size:13px; font-weight:600; padding:11px 22px; border-radius:30px; box-shadow:0 4px 20px rgba(0,0,0,.5); opacity:0; transition:all .3s; pointer-events:none; z-index:999; }
+.profil-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.profil-member-badge { display:inline-flex; align-items:center; gap:6px; background:var(--accent-pale); border:1px solid var(--accent-l); border-radius:20px; padding:4px 12px; font-size:12px; color:var(--accent); font-weight:500; margin-bottom:12px; }
+@media (max-width:560px) { .profil-card { padding:0 16px 28px; } .profil-info-grid { grid-template-columns:1fr; } .profil-name-display { font-size:20px; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profil-wrap">
+
+  <div class="profil-banner"><div class="profil-banner-dots"></div></div>
+
+  <div class="profil-card">
+
+    <!-- Avatar -->
+    <div class="profil-avatar-zone">
+      <div class="profil-avatar-wrap">
+        <div class="profil-avatar-ring">
+          <div class="profil-avatar-inner">
+            <span class="profil-avatar-initial" id="avatarInitial">
+              {{ session.username[0]|upper if session.username else '?' }}
+            </span>
+            <img class="profil-avatar-photo" id="avatarPhoto" alt="Photo de profil"/>
+          </div>
+        </div>
+        <label class="profil-avatar-edit" for="avatarFileInput" title="Changer la photo">
+          <svg viewBox="0 0 24 24"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"/><path d="M18 2l4 4-10 10H8v-4L18 2z"/></svg>
+        </label>
+        <input type="file" id="avatarFileInput" accept="image/*"/>
+      </div>
+      <div class="profil-avatar-actions">
+        <button class="btn-remove" id="removeAvatarBtn">Supprimer la photo</button>
+      </div>
+    </div>
+
+    <div class="profil-member-badge">⭐ Membre Planning 2026</div>
+
+    <!-- Nom -->
+    <div class="profil-section-label">Nom d'utilisateur</div>
+    <div class="profil-name-row" id="nameRow">
+      <div class="profil-name-display" id="nameDisplay">{{ session.username or 'Utilisateur' }}</div>
+      <button class="profil-edit-btn" id="editNameBtn" title="Modifier">
+        <svg viewBox="0 0 24 24" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+    </div>
+
+    <div class="profil-edit-wrap" id="editWrap">
+      <input type="text" class="profil-edit-input" id="nameInput" maxlength="30" placeholder="Entrez votre nom…"/>
+      <div class="char-count" id="charCount">0 / 30</div>
+      <div class="profil-edit-actions">
+        <button class="btn-save-name" id="saveNameBtn">Enregistrer</button>
+        <button class="btn-cancel-name" id="cancelNameBtn">Annuler</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="profil-stats">
+      <div class="profil-stat">
+        <span class="profil-stat-val" id="pStatSalat">0/5</span>
+        <span class="profil-stat-lbl">Salat auj.</span>
+      </div>
+      <div class="profil-stat">
+        <span class="profil-stat-val" id="pStatWater">0</span>
+        <span class="profil-stat-lbl">Eau auj.</span>
+      </div>
+      <div class="profil-stat">
+        <span class="profil-stat-val" id="pStatGym">0/5</span>
+        <span class="profil-stat-lbl">Gym sem.</span>
+      </div>
+    </div>
+
+    <div class="profil-divider"></div>
+
+    <div class="profil-info-grid">
+      <div class="profil-info-card">
+        <div class="profil-info-ico">📅</div>
+        <div>
+          <div class="profil-info-title">Membre depuis</div>
+          <div class="profil-info-val" id="pMemberSince">—</div>
+        </div>
+      </div>
+      <div class="profil-info-card">
+        <div class="profil-info-ico">🎯</div>
+        <div>
+          <div class="profil-info-title">Objectif actif</div>
+          <div class="profil-info-val">Été 2026</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profil-badges">
+      <div class="profil-section-label">Accomplissements</div>
+      <div class="profil-badges-row">
+        <span class="profil-badge">🕌 Fajr keeper</span>
+        <span class="profil-badge">💧 Hydraté</span>
+        <span class="profil-badge">📖 Quran</span>
+        <span class="profil-badge">🏃 Actif</span>
+      </div>
+    </div>
+
+    <div class="profil-bio">
+      <div class="profil-section-label">Bio</div>
+      <textarea class="profil-bio-field" id="bioField" placeholder="Quelques mots sur vous…" maxlength="200" rows="3"></textarea>
+      <div class="char-count" id="bioCharCount">0 / 200</div>
+    </div>
+
+    <button class="profil-save-btn" id="saveAllBtn">💾 Sauvegarder le profil</button>
+  </div>
+</div>
+
+<div class="profil-toast" id="profilToast">✓ Profil mis à jour</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ══════════════════════════════════════════════
+   PROFIL — tout depuis l'API serveur
+   ══════════════════════════════════════════════ */
+
+function fmtDate(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+function getWeekKey(d) {
+  const t = new Date(d); t.setHours(0,0,0,0);
+  t.setDate(t.getDate() + 3 - (t.getDay()+6)%7);
+  const w = new Date(t.getFullYear(), 0, 4);
+  return `${t.getFullYear()}-W${Math.round(((t-w)/86400000+w.getDay()+5)/7)}`;
+}
+
+const TODAY    = new Date(); TODAY.setHours(0,0,0,0);
+const DATE_KEY = fmtDate(TODAY);
+const WEEK_KEY = getWeekKey(TODAY);
+const DAY_IDX  = (TODAY.getDay()+6)%7;
+
+/* ── Toast ── */
+const toast = document.getElementById('profilToast');
+let toastT;
+function showToast(msg) {
+  toast.textContent = msg || '✓ Sauvegardé';
+  clearTimeout(toastT);
+  toast.classList.add('show');
+  toastT = setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+/* ── Avatar ── */
+const avatarPhoto   = document.getElementById('avatarPhoto');
+const avatarInitial = document.getElementById('avatarInitial');
+
+function setAvatar(src) {
+  if (src) {
+    avatarPhoto.src = src;
+    avatarPhoto.style.display = 'block';
+    avatarInitial.style.display = 'none';
+  } else {
+    avatarPhoto.style.display = 'none';
+    avatarInitial.style.display = '';
+  }
+  // Sidebar
+  const sb = document.getElementById('sidebarAvatar');
+  if (sb) {
+    if (src) {
+      sb.style.backgroundImage = `url('${src}')`;
+      sb.style.backgroundSize  = 'cover';
+      sb.style.backgroundPosition = 'center';
+      sb.textContent = '';
+    } else {
+      sb.style.backgroundImage = '';
+      sb.textContent = document.getElementById('nameDisplay').textContent.charAt(0).toUpperCase();
+    }
+  }
+}
+
+document.getElementById('avatarFileInput').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = async ev => {
+    setAvatar(ev.target.result);
+    await fetch('/api/profil', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ avatar: ev.target.result })
+    });
+    showToast('📸 Photo mise à jour !');
+  };
+  r.readAsDataURL(f);
+  e.target.value = '';
+});
+
+document.getElementById('removeAvatarBtn').addEventListener('click', async () => {
+  setAvatar(null);
+  await fetch('/api/profil', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ avatar: '' })
+  });
+  showToast('Photo supprimée');
+});
+
+/* ── Nom ── */
+const nameDisplay = document.getElementById('nameDisplay');
+const nameRow     = document.getElementById('nameRow');
+const editWrap    = document.getElementById('editWrap');
+const nameInput   = document.getElementById('nameInput');
+const charCount   = document.getElementById('charCount');
+
+function openEditName() {
+  nameInput.value = nameDisplay.textContent.trim();
+  updateCC(nameInput.value.length);
+  editWrap.classList.add('open');
+  nameRow.style.display = 'none';
+  nameInput.focus();
+}
+function closeEditName() {
+  editWrap.classList.remove('open');
+  nameRow.style.display = '';
+}
+function updateCC(n) {
+  charCount.textContent = `${n} / 30`;
+  charCount.className   = 'char-count' + (n >= 25 ? (n >= 30 ? ' over' : ' warn') : '');
+}
+
+document.getElementById('editNameBtn').addEventListener('click', openEditName);
+nameInput.addEventListener('input', () => updateCC(nameInput.value.length));
+nameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter')  document.getElementById('saveNameBtn').click();
+  if (e.key === 'Escape') closeEditName();
+});
+
+document.getElementById('saveNameBtn').addEventListener('click', async () => {
+  const val = nameInput.value.trim();
+  if (!val) { nameInput.style.borderColor = '#f87171'; return; }
+  nameDisplay.textContent = val;
+  avatarInitial.textContent = val.charAt(0).toUpperCase();
+  const sbName = document.getElementById('sidebarName');
+  if (sbName) sbName.textContent = val;
+  await fetch('/api/profil', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ username: val })
+  });
+  closeEditName();
+  showToast('✓ Nom mis à jour');
+});
+document.getElementById('cancelNameBtn').addEventListener('click', closeEditName);
+
+/* ── Bio ── */
+const bioField = document.getElementById('bioField');
+const bioCC    = document.getElementById('bioCharCount');
+bioField.addEventListener('input', () => {
+  const n = bioField.value.length;
+  bioCC.textContent = `${n} / 200`;
+  bioCC.className   = 'char-count' + (n >= 180 ? (n >= 200 ? ' over' : ' warn') : '');
+});
+
+/* ── Sauvegarder tout ── */
+document.getElementById('saveAllBtn').addEventListener('click', async () => {
+  await fetch('/api/profil', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ bio: bioField.value })
+  });
+  showToast('💾 Profil sauvegardé');
+});
+
+/* ── Stats depuis API dashboard ── */
+async function loadStats() {
+  try {
+    const res  = await fetch(`/api/dashboard/${DATE_KEY}`);
+    const data = await res.json();
+
+    // Salat aujourd'hui
+    const PRAYERS = ['fajr','dhuhr','asr','maghrib','isha'];
+    const sd = PRAYERS.filter(p => data.salat && data.salat[`${p}_${DAY_IDX}`]).length;
+    document.getElementById('pStatSalat').textContent = `${sd}/5`;
+
+    // Eau
+    document.getElementById('pStatWater').textContent = data.water || 0;
+
+    // Gym
+    document.getElementById('pStatGym').textContent = `${(data.gym_days || []).length}/5`;
+  } catch(e) {}
+}
+
+/* ── Charger profil depuis serveur ── */
+async function loadProfil() {
+  try {
+    const res  = await fetch('/api/profil');
+    const data = await res.json();
+
+    if (data.avatar) setAvatar(data.avatar);
+    if (data.username) {
+      nameDisplay.textContent = data.username;
+      avatarInitial.textContent = data.username.charAt(0).toUpperCase();
+      const sbName = document.getElementById('sidebarName');
+      if (sbName) sbName.textContent = data.username;
+    }
+    if (data.bio) {
+      bioField.value = data.bio;
+      bioCC.textContent = `${data.bio.length} / 200`;
+    }
+    if (data.memberSince) {
+      document.getElementById('pMemberSince').textContent = data.memberSince;
+    } else {
+      // Première visite : enregistre la date membre
+      const since = TODAY.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+      document.getElementById('pMemberSince').textContent = since;
+      await fetch('/api/profil', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ memberSince: since })
+      });
+    }
+  } catch(e) {}
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadProfil();
+  loadStats();
+});
+</script>
+{% endblock %}
