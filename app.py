@@ -20,6 +20,7 @@ USERS = {
     'khadidja': 'khadidja2026',
     'mimi': 'mimi2026',
     'hadjere': 'hadjere2026',
+    'kiki': 'kiki2026',
     
 }
 
