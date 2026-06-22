@@ -3,6 +3,191 @@
 {% block page_title %}Régime{% endblock %}
 {% block page_subtitle %}Ton journal du jour, à ta façon, et le défi 75 Hard.{% endblock %}
 
+{% block extra_css %}
+<style>
+/* ── Chaîne de progression du poids ── */
+.weight-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+.weight-chain .wc-point {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 10px;
+  color: var(--primary-d);
+  font-weight: 600;
+}
+.weight-chain .wc-point.latest {
+  background: var(--primary-l);
+  border-color: var(--primary-l);
+  color: #fff;
+}
+.weight-chain .wc-arrow { color: var(--ink-soft); }
+.weight-chain .wc-empty {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+/* ── Plan alimentaire : sections par repas ── */
+.meal-section {
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.meal-section:last-of-type { border-bottom: none; }
+
+.meal-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.meal-section-icon { font-size: 1rem; }
+.meal-section-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--primary-d);
+  flex: 1;
+}
+.meal-section-total {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 2px 10px;
+}
+.meal-section-total.over { color: #e05c5c; }
+
+/* ── Lignes aliment + calories ── */
+.meal-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.meal-row input.meal-food {
+  flex: 1;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+}
+.meal-row input.meal-food::placeholder { color: var(--ink-soft); }
+.meal-row input.meal-food:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.meal-row input.meal-cal {
+  width: 80px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--primary-d);
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: right;
+}
+.meal-row input.meal-cal::placeholder { color: var(--ink-soft); font-weight: 400; }
+.meal-row input.meal-cal:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.meal-cal-unit {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.btn-del-row {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 1rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.btn-del-row:hover { color: #e05c5c; background: var(--surface-2); }
+
+.btn-add-row {
+  font-size: 0.78rem;
+  color: var(--accent);
+  background: none;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  margin-top: 2px;
+}
+.btn-add-row:hover { background: var(--surface-2); border-color: var(--accent); }
+
+/* ── Barre total journée ── */
+.meal-total-bar {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.meal-total-bar .total-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.total-kcal {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--primary-d);
+  font-size: 1rem;
+}
+.total-kcal.over { color: #e05c5c; }
+.total-label { color: var(--ink-soft); font-size: 0.82rem; }
+.meal-progress {
+  height: 6px;
+  background: var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.meal-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.meal-progress-fill.over { background: #e05c5c; }
+.meal-hint {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 
 <div class="card">
@@ -22,6 +207,63 @@
   </div>
 </div>
 
+<!-- 📊 Calories du jour -->
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">Jour par jour</span>
+      <h3>Calories du jour</h3>
+    </div>
+    <span class="icon-badge">📊</span>
+  </div>
+  <p class="card-note">Note ton objectif maximum — le plan alimentaire ci-dessous calculera les calories automatiquement.</p>
+
+  <div class="card-row">
+    <div class="field" style="max-width:200px;">
+      <label for="calorieTarget">Objectif max (kcal/jour)</label>
+      <input type="number" id="calorieTarget" min="0" step="50" placeholder="Ex : 2000">
+    </div>
+    <div class="field" style="max-width:200px;">
+      <label for="calorieConsumed">Calories consommées (total)</label>
+      <input type="number" id="calorieConsumed" min="0" step="10" placeholder="Calculé auto ou saisi">
+    </div>
+  </div>
+
+  <div class="progress-row" id="calorieProgress">
+    <div class="progress"><div class="progress-fill"></div></div>
+    <span class="progress-label">0 / 0 kcal</span>
+  </div>
+</div>
+
+<!-- ⚖️ Suivi du poids -->
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">Au fil du temps</span>
+      <h3>Suivi du poids</h3>
+    </div>
+    <span class="icon-badge">⚖️</span>
+  </div>
+  <p class="card-note">Enregistre ton poids du jour pour suivre ta progression vers ton objectif.</p>
+
+  <div class="card-row">
+    <div class="field" style="max-width:200px;">
+      <label for="weightCurrent">Poids actuel (kg)</label>
+      <input type="number" id="weightCurrent" min="0" step="0.1" placeholder="Ex : 68">
+    </div>
+    <div class="field" style="max-width:200px;">
+      <label for="weightGoal">Objectif (kg)</label>
+      <input type="number" id="weightGoal" min="0" step="0.1" placeholder="Ex : 60">
+    </div>
+  </div>
+
+  <button class="btn btn-sm btn-ghost" id="weightLogBtn" type="button">Enregistrer le poids du jour</button>
+
+  <div class="sub-title">Progression</div>
+  <div id="weightChain" class="weight-chain"></div>
+  <p class="field-hint" id="weightGapNote"></p>
+</div>
+
 <div class="card">
   <div class="card-head">
     <div>
@@ -37,6 +279,70 @@
       <input type="checkbox">
       <span class="label">J'ai suivi mon objectif aujourd'hui</span>
     </label>
+  </div>
+</div>
+
+<!-- 🍎 Plan alimentaire — saisie manuelle avec calcul auto -->
+<div class="card">
+  <div class="card-head">
+    <div>
+      <span class="eyebrow">Jour par jour</span>
+      <h3>Plan alimentaire</h3>
+    </div>
+    <span class="icon-badge">🍎</span>
+  </div>
+  <p class="card-note">Écris chaque aliment et ses calories — le total se calcule automatiquement.</p>
+
+  <div class="meal-section">
+    <div class="meal-section-head">
+      <span class="meal-section-icon">🌅</span>
+      <span class="meal-section-title">Petit déjeuner</span>
+      <span class="meal-section-total" id="total-breakfast">0 kcal</span>
+    </div>
+    <div class="meal-rows" id="rows-breakfast"></div>
+    <button class="btn-add-row" type="button" onclick="addMealRow('breakfast')">+ Ajouter un aliment</button>
+  </div>
+
+  <div class="meal-section">
+    <div class="meal-section-head">
+      <span class="meal-section-icon">☀️</span>
+      <span class="meal-section-title">Déjeuner</span>
+      <span class="meal-section-total" id="total-lunch">0 kcal</span>
+    </div>
+    <div class="meal-rows" id="rows-lunch"></div>
+    <button class="btn-add-row" type="button" onclick="addMealRow('lunch')">+ Ajouter un aliment</button>
+  </div>
+
+  <div class="meal-section">
+    <div class="meal-section-head">
+      <span class="meal-section-icon">🌙</span>
+      <span class="meal-section-title">Dîner</span>
+      <span class="meal-section-total" id="total-dinner">0 kcal</span>
+    </div>
+    <div class="meal-rows" id="rows-dinner"></div>
+    <button class="btn-add-row" type="button" onclick="addMealRow('dinner')">+ Ajouter un aliment</button>
+  </div>
+
+  <div class="meal-section">
+    <div class="meal-section-head">
+      <span class="meal-section-icon">🍎</span>
+      <span class="meal-section-title">Collations</span>
+      <span class="meal-section-total" id="total-snacks">0 kcal</span>
+    </div>
+    <div class="meal-rows" id="rows-snacks"></div>
+    <button class="btn-add-row" type="button" onclick="addMealRow('snacks')">+ Ajouter un aliment</button>
+  </div>
+
+  <!-- Barre total journée -->
+  <div class="meal-total-bar">
+    <div class="total-line">
+      <span class="total-label">Total du jour</span>
+      <span class="total-kcal" id="mealTotalKcal">0 kcal</span>
+    </div>
+    <div class="meal-progress">
+      <div class="meal-progress-fill" id="mealProgressFill" style="width:0%"></div>
+    </div>
+    <p class="meal-hint" id="mealHint">Ajoute des aliments pour voir le total.</p>
   </div>
 </div>
 
@@ -96,15 +402,187 @@ function fmtDate(d) {
 const TODAY    = new Date(); TODAY.setHours(0,0,0,0);
 const DATE_KEY = fmtDate(TODAY);
 
+// Structure des repas : chaque repas = liste de { food, cal }
+// state.meals = { breakfast: [{food:'oeuf', cal:57}, ...], ... }
+
 let state = {
   journal:   '',
-  checks:    {},   // {respected: true}
-  hard_data: {},   // {workout1: true, ...}
+  checks:    {},
+  hard_data: {},
   goal:      '',
-  hard75:    {},   // {1: true, ...}
+  hard75:    {},
+
+  meals: {
+    breakfast: [],
+    lunch:     [],
+    dinner:    [],
+    snacks:    []
+  },
+
+  weight:         null,
+  weight_goal:    null,
+  weight_history: [],
+
+  calories_target:   null,
+  calories_consumed:  null
 };
 
-/* ── Charger ── */
+/* ════════════════════════════════════════════
+   🍎 PLAN ALIMENTAIRE — saisie ligne par ligne
+   ════════════════════════════════════════════ */
+
+const MEAL_KEYS = ['breakfast', 'lunch', 'dinner', 'snacks'];
+
+function getMealTotal(mealKey) {
+  return (state.meals[mealKey] || []).reduce((sum, row) => sum + (parseInt(row.cal, 10) || 0), 0);
+}
+
+function getDayTotal() {
+  return MEAL_KEYS.reduce((sum, k) => sum + getMealTotal(k), 0);
+}
+
+function addMealRow(mealKey, food = '', cal = '') {
+  if (!Array.isArray(state.meals[mealKey])) state.meals[mealKey] = [];
+  const idx = state.meals[mealKey].length;
+  state.meals[mealKey].push({ food, cal: cal === '' ? '' : String(cal) });
+  renderMealRow(mealKey, idx);
+  updateMealTotals();
+}
+
+function renderMealRow(mealKey, idx) {
+  const container = document.getElementById('rows-' + mealKey);
+  if (!container) return;
+
+  // Supprimer l'ancienne ligne si elle existe
+  const existing = container.querySelector(`[data-idx="${idx}"]`);
+  if (existing) existing.remove();
+
+  const row  = state.meals[mealKey][idx];
+  const div  = document.createElement('div');
+  div.className = 'meal-row';
+  div.dataset.idx = idx;
+
+  const foodInput = document.createElement('input');
+  foodInput.type = 'text';
+  foodInput.className = 'meal-food';
+  foodInput.placeholder = 'Ex : œuf, poulet, riz…';
+  foodInput.value = row.food || '';
+  foodInput.oninput = () => {
+    state.meals[mealKey][idx].food = foodInput.value;
+    clearTimeout(foodInput._t);
+    foodInput._t = setTimeout(saveDay, 800);
+  };
+
+  const calInput = document.createElement('input');
+  calInput.type = 'number';
+  calInput.className = 'meal-cal';
+  calInput.placeholder = 'kcal';
+  calInput.min = '0';
+  calInput.value = row.cal || '';
+  calInput.oninput = () => {
+    state.meals[mealKey][idx].cal = calInput.value;
+    updateMealTotals();
+    clearTimeout(calInput._t);
+    calInput._t = setTimeout(saveDay, 800);
+  };
+
+  const unit = document.createElement('span');
+  unit.className = 'meal-cal-unit';
+  unit.textContent = 'kcal';
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'btn-del-row';
+  delBtn.type = 'button';
+  delBtn.title = 'Supprimer';
+  delBtn.innerHTML = '×';
+  delBtn.onclick = () => {
+    state.meals[mealKey].splice(idx, 1);
+    renderAllMealRows(mealKey);
+    updateMealTotals();
+    saveDay();
+  };
+
+  div.appendChild(foodInput);
+  div.appendChild(calInput);
+  div.appendChild(unit);
+  div.appendChild(delBtn);
+  container.appendChild(div);
+}
+
+function renderAllMealRows(mealKey) {
+  const container = document.getElementById('rows-' + mealKey);
+  if (!container) return;
+  container.innerHTML = '';
+  (state.meals[mealKey] || []).forEach((_, idx) => renderMealRow(mealKey, idx));
+}
+
+function renderMeals() {
+  MEAL_KEYS.forEach(k => {
+    // Compatibilité : si les repas sont encore en format string, convertir
+    if (typeof state.meals[k] === 'string' || !Array.isArray(state.meals[k])) {
+      state.meals[k] = [];
+    }
+    // Ajouter une ligne vide si aucune ligne
+    if (state.meals[k].length === 0) state.meals[k].push({ food: '', cal: '' });
+    renderAllMealRows(k);
+  });
+  updateMealTotals();
+}
+
+function updateMealTotals() {
+  const target   = state.calories_target || 0;
+  const dayTotal = getDayTotal();
+
+  MEAL_KEYS.forEach(k => {
+    const t   = getMealTotal(k);
+    const el  = document.getElementById('total-' + k);
+    if (el) {
+      el.textContent = t + ' kcal';
+      el.classList.toggle('over', target > 0 && dayTotal > target);
+    }
+  });
+
+  const totalEl = document.getElementById('mealTotalKcal');
+  const fillEl  = document.getElementById('mealProgressFill');
+  const hintEl  = document.getElementById('mealHint');
+
+  if (totalEl) {
+    totalEl.textContent = dayTotal + ' kcal';
+    totalEl.classList.toggle('over', target > 0 && dayTotal > target);
+  }
+  if (fillEl) {
+    const pct = target > 0 ? Math.min(100, Math.round(dayTotal / target * 100)) : 0;
+    fillEl.style.width = pct + '%';
+    fillEl.classList.toggle('over', target > 0 && dayTotal > target);
+  }
+  if (hintEl) {
+    if (target > 0 && dayTotal > 0) {
+      const diff = dayTotal - target;
+      if (diff > 0)      hintEl.textContent = `⚠️ Tu dépasses de ${diff} kcal — pense à ajuster tes portions.`;
+      else if (diff < 0) hintEl.textContent = `✅ Dans l'objectif — il te reste ${Math.abs(diff)} kcal de marge.`;
+      else               hintEl.textContent = `🎯 Exactement à ton objectif !`;
+    } else if (dayTotal > 0) {
+      hintEl.textContent = `Total du jour : ${dayTotal} kcal. Définis un objectif max pour voir la marge.`;
+    } else {
+      hintEl.textContent = 'Ajoute des aliments pour voir le total.';
+    }
+  }
+
+  // Sync avec calories consommées si pas d'édition manuelle
+  if (dayTotal > 0) {
+    const consumedEl = document.getElementById('calorieConsumed');
+    if (consumedEl && !consumedEl._manualEdit) {
+      consumedEl.value = dayTotal;
+      state.calories_consumed = dayTotal;
+      renderCalories();
+    }
+  }
+}
+
+/* ════════════════════════════════════════════
+   CHARGEMENT / SAUVEGARDE
+   ════════════════════════════════════════════ */
+
 async function loadRegime() {
   try {
     const res  = await fetch(`/api/regime/${DATE_KEY}`);
@@ -114,35 +592,70 @@ async function loadRegime() {
     state.hard_data = data.hard_data || {};
     state.goal      = data.goal      || '';
     state.hard75    = data.hard75    || {};
+
+    state.meals = data.meals || { breakfast: [], lunch: [], dinner: [], snacks: [] };
+    // Compatibilité ancien format string → tableau vide
+    ['breakfast','lunch','dinner','snacks'].forEach(k => {
+      if (!Array.isArray(state.meals[k])) state.meals[k] = [];
+    });
+
+    state.weight            = data.weight ?? null;
+    state.weight_goal       = data.weight_goal ?? null;
+    state.calories_target   = data.calories_target ?? null;
+    state.calories_consumed = data.calories_consumed ?? null;
+
+    // Restaurer les calories sauvegardées (nouveau format — champ supprimé, on ignore)
+
     render();
   } catch(e) {
     console.error('Erreur chargement régime:', e);
   }
 }
 
-/* ── Sauvegarder données du jour ── */
+async function loadWeightHistory() {
+  try {
+    const res  = await fetch('/api/regime/weight-history');
+    const data = await res.json();
+    state.weight_history = data.history || data || [];
+    renderWeightChain();
+  } catch(e) {
+    console.error('Erreur chargement historique du poids:', e);
+  }
+}
+
 async function saveDay() {
   await fetch('/api/regime/day', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
-      date_key:  DATE_KEY,
-      journal:   state.journal,
-      checks:    state.checks,
-      hard_data: state.hard_data
+      date_key:          DATE_KEY,
+      journal:           state.journal,
+      checks:            state.checks,
+      hard_data:         state.hard_data,
+      meals:             state.meals,
+      weight:            state.weight,
+      calories_consumed: state.calories_consumed
     })
   });
   document.dispatchEvent(new CustomEvent('pl:update'));
 }
 
-/* ── Sauvegarder données persistantes ── */
 async function savePersist() {
   await fetch('/api/regime/persist', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ goal: state.goal, hard75: state.hard75 })
+    body: JSON.stringify({
+      goal:            state.goal,
+      hard75:          state.hard75,
+      weight_goal:     state.weight_goal,
+      calories_target: state.calories_target
+    })
   });
 }
+
+/* ════════════════════════════════════════════
+   RENDU
+   ════════════════════════════════════════════ */
 
 function render() {
   // Objectif
@@ -189,37 +702,32 @@ function render() {
     };
   });
 
-  // Grille 75 Hard
   renderHard75();
+  renderMeals();
+  setupCalorieInputs();
+  renderCalories();
+  setupWeightInputs();
 }
 
 function renderHard75() {
   const grid = document.getElementById('hard75Grid');
   if (!grid) return;
-
   grid.innerHTML = '';
 
   for (let i = 1; i <= 75; i++) {
     const tile = document.createElement('span');
-
     const done = !!state.hard75[i];
-
     tile.className = 'tile' + (done ? ' done' : '');
     tile.textContent = i;
     tile.title = `Day ${i}`;
-
     tile.onclick = () => {
       state.hard75[i] = !state.hard75[i];
-
       tile.classList.toggle('done', state.hard75[i]);
-
       updateHardProgress();
       savePersist();
     };
-
     grid.appendChild(tile);
   }
-
   updateHardProgress();
 }
 
@@ -233,6 +741,129 @@ function updateHardProgress() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', loadRegime);
+/* ── 📊 Calories du jour ── */
+function setupCalorieInputs() {
+  const targetEl = document.getElementById('calorieTarget');
+  if (targetEl) {
+    targetEl.value = state.calories_target ?? '';
+    targetEl.oninput = () => {
+      state.calories_target = parseInt(targetEl.value, 10) || 0;
+      renderCalories();
+      updateMealTotals();
+      clearTimeout(targetEl._t);
+      targetEl._t = setTimeout(savePersist, 800);
+    };
+  }
+
+  const consumedEl = document.getElementById('calorieConsumed');
+  if (consumedEl) {
+    consumedEl.value = state.calories_consumed ?? '';
+    // Marquer comme édition manuelle si l'utilisateur tape dedans
+    consumedEl.oninput = () => {
+      consumedEl._manualEdit = true;
+      state.calories_consumed = parseInt(consumedEl.value, 10) || 0;
+      renderCalories();
+      clearTimeout(consumedEl._t);
+      consumedEl._t = setTimeout(saveDay, 800);
+    };
+  }
+}
+
+function renderCalories() {
+  const wrap = document.getElementById('calorieProgress');
+  if (!wrap) return;
+  const consumed = state.calories_consumed || 0;
+  const target   = state.calories_target  || 0;
+  const pct = target > 0 ? Math.min(100, Math.round(consumed / target * 100)) : 0;
+
+  wrap.querySelector('.progress-fill').style.width  = pct + '%';
+  wrap.querySelector('.progress-label').textContent = target > 0
+    ? `${consumed} / ${target} kcal · ${pct}%`
+    : `${consumed} kcal`;
+}
+
+/* ── ⚖️ Suivi du poids ── */
+function setupWeightInputs() {
+  const currentEl = document.getElementById('weightCurrent');
+  if (currentEl) {
+    currentEl.value = state.weight ?? '';
+    currentEl.oninput = () => {
+      state.weight = parseFloat(currentEl.value) || null;
+    };
+  }
+
+  const goalEl = document.getElementById('weightGoal');
+  if (goalEl) {
+    goalEl.value = state.weight_goal ?? '';
+    goalEl.oninput = () => {
+      state.weight_goal = parseFloat(goalEl.value) || null;
+      renderWeightChain();
+      clearTimeout(goalEl._t);
+      goalEl._t = setTimeout(savePersist, 800);
+    };
+  }
+
+  const btn = document.getElementById('weightLogBtn');
+  if (btn) {
+    btn.onclick = () => {
+      const val = parseFloat(currentEl ? currentEl.value : state.weight);
+      if (!val || val <= 0) return;
+      state.weight = val;
+      saveDay();
+
+      const todayEntry = state.weight_history.find(e => e.date === DATE_KEY);
+      if (todayEntry) todayEntry.weight = val;
+      else state.weight_history.push({ date: DATE_KEY, weight: val });
+      renderWeightChain();
+
+      loadWeightHistory();
+    };
+  }
+
+  renderWeightChain();
+}
+
+function renderWeightChain() {
+  const wrap = document.getElementById('weightChain');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+
+  if (!state.weight_history.length) {
+    wrap.innerHTML = '<span class="wc-empty">Aucun relevé encore — enregistre ton poids du jour pour démarrer ta progression.</span>';
+  } else {
+    const recent = state.weight_history.slice(-10);
+    recent.forEach((entry, idx) => {
+      if (idx > 0) {
+        const arrow = document.createElement('span');
+        arrow.className = 'wc-arrow';
+        arrow.textContent = '→';
+        wrap.appendChild(arrow);
+      }
+      const pt = document.createElement('span');
+      pt.className = 'wc-point' + (idx === recent.length - 1 ? ' latest' : '');
+      pt.textContent = entry.weight;
+      wrap.appendChild(pt);
+    });
+  }
+
+  const note = document.getElementById('weightGapNote');
+  if (!note) return;
+
+  const history = state.weight_history;
+  if (state.weight_goal != null && history.length) {
+    const current = history[history.length - 1].weight;
+    const diff = +(current - state.weight_goal).toFixed(1);
+    if (diff > 0)       note.textContent = `Écart avec ton objectif : ${diff} kg.`;
+    else if (diff < 0)  note.textContent = `Tu as dépassé ton objectif de ${Math.abs(diff)} kg.`;
+    else                note.textContent = `Objectif atteint 🎉`;
+  } else {
+    note.textContent = '';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadRegime();
+  loadWeightHistory();
+});
 </script>
 {% endblock %}
