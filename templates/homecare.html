@@ -93,12 +93,8 @@ async function loadHomecare() {
   }
 }
 
-/* ── Sauvegarder données du jour ── */
+/* ── Sauvegarder ── */
 async function saveDay() {
-  // Calcule total minutes pour le streak
-  const total = Object.values(state.minutes).reduce((s, v) => s + (parseInt(v) || 0), 0);
-  state.streak[DATE_KEY] = total > 0;
-
   await fetch('/api/homecare/day', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -119,7 +115,6 @@ async function saveDay() {
 }
 
 function render() {
-  // Checkboxes + champs minutes
   document.querySelectorAll('#homecareList .check-item').forEach(item => {
     const id  = item.dataset.id;
     const chk = item.querySelector('input[type="checkbox"]');
@@ -157,18 +152,34 @@ function updateTotal() {
   }
 }
 
+/* ── Streak cliquable comme Deen ── */
 function renderStreak() {
   const grid = document.getElementById('homecareStreak');
   if (!grid) return;
   grid.innerHTML = '';
   const today = new Date(); today.setHours(0,0,0,0);
+
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const key  = fmtDate(d);
+    const key     = fmtDate(d);
+    const isToday = (i === 0);
+
     const tile = document.createElement('span');
-    tile.className = 'tile' + (state.streak[key] ? ' on' : '');
-    tile.title     = key;
+    tile.className   = 'tile' + (state.streak[key] ? ' done' : '');
+    tile.textContent = 30 - i;
+    tile.title       = key;
+
+    /* Tuile cliquable comme dans Deen */
+    tile.onclick = () => {
+      state.streak[key] = !state.streak[key];
+      tile.classList.toggle('done', state.streak[key]);
+      saveDay();
+    };
+
+    /* Highlight du jour courant */
+    if (isToday) tile.style.boxShadow = '0 0 0 2px var(--accent)';
+
     grid.appendChild(tile);
   }
 }

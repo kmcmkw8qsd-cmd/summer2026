@@ -127,13 +127,8 @@ async function loadLearning() {
   }
 }
 
-/* ── Sauvegarder données du jour ── */
+/* ── Sauvegarder ── */
 async function saveDay() {
-  // Mise à jour streaks du jour
-  state.lang_streak[DATE_KEY]     = Object.values(state.lang_checks).some(Boolean);
-  state.activity_streak[DATE_KEY] = !!state.activity_done['practiced'];
-  state.culture_streak[DATE_KEY]  = state.culture_note.trim().length > 0;
-
   await fetch('/api/learning/day', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -180,7 +175,6 @@ function render() {
     chk.onchange = () => {
       state.lang_checks[id] = chk.checked;
       saveDay();
-      renderStreak('langStreak', state.lang_streak);
     };
   });
 
@@ -203,7 +197,6 @@ function render() {
     chk.onchange = () => {
       state.activity_done[id] = chk.checked;
       saveDay();
-      renderStreak('activityStreak', state.activity_streak);
     };
   });
 
@@ -214,10 +207,7 @@ function render() {
     cultEl.oninput = () => {
       state.culture_note = cultEl.value;
       clearTimeout(cultEl._t);
-      cultEl._t = setTimeout(() => {
-        saveDay();
-        renderStreak('cultureStreak', state.culture_streak);
-      }, 800);
+      cultEl._t = setTimeout(saveDay, 800);
     };
   }
 
@@ -226,24 +216,36 @@ function render() {
   renderStreak('cultureStreak',  state.culture_streak);
 }
 
+/* ── Streak cliquable comme Deen ── */
 function renderStreak(gridId, streakObj) {
   const grid = document.getElementById(gridId);
   if (!grid) return;
   grid.innerHTML = '';
   const today = new Date(); today.setHours(0,0,0,0);
+
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-
-    const key = fmtDate(d);
+    const key     = fmtDate(d);
+    const isToday = (i === 0);
 
     const tile = document.createElement('span');
-    tile.className = 'tile' + (streakObj[key] ? ' done' : '');
+    tile.className   = 'tile' + (streakObj[key] ? ' done' : '');
     tile.textContent = 30 - i;
-    tile.title = key;
+    tile.title       = key;
+
+    /* Tuile cliquable comme dans Deen */
+    tile.onclick = () => {
+      streakObj[key] = !streakObj[key];
+      tile.classList.toggle('done', streakObj[key]);
+      saveDay();
+    };
+
+    /* Highlight du jour courant */
+    if (isToday) tile.style.boxShadow = '0 0 0 2px var(--accent)';
 
     grid.appendChild(tile);
-}
+  }
 }
 
 document.addEventListener('DOMContentLoaded', loadLearning);

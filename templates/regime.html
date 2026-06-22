@@ -196,20 +196,30 @@ function render() {
 function renderHard75() {
   const grid = document.getElementById('hard75Grid');
   if (!grid) return;
+
   grid.innerHTML = '';
-  const done = Object.values(state.hard75).filter(Boolean).length;
+
   for (let i = 1; i <= 75; i++) {
     const tile = document.createElement('span');
-    tile.className = 'tile' + (state.hard75[i] ? ' on' : '');
+
+    const done = !!state.hard75[i];
+
+    tile.className = 'tile' + (done ? ' done' : '');
     tile.textContent = i;
+    tile.title = `Day ${i}`;
+
     tile.onclick = () => {
       state.hard75[i] = !state.hard75[i];
-      tile.classList.toggle('on', state.hard75[i]);
+
+      tile.classList.toggle('done', state.hard75[i]);
+
       updateHardProgress();
       savePersist();
     };
+
     grid.appendChild(tile);
   }
+
   updateHardProgress();
 }
 
