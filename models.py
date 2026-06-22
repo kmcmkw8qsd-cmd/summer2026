@@ -58,7 +58,8 @@ class Sport(models.Model):
     swimming = models.BooleanField(default=False)
 
     sleep_hours = models.FloatField(default=0)
-
+    
+    gym_target = models.IntegerField(default=3)
 class Regime(models.Model):
 
     user = models.ForeignKey(User,on_delete=models.CASCADE)

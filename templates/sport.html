@@ -155,6 +155,8 @@
 }
 .gym-pill:hover { border-color: var(--accent); color: var(--accent); }
 .gym-pill.on { background: var(--primary-l); border-color: var(--primary-l); color: #fff; }
+/* libellé long ("Tous les jours") plus lisible en police normale */
+.gym-pill[data-freq="7"] { font-family: var(--font-body); }
 .gym-counter {
   font-family: var(--font-mono);
   font-size: 0.72rem;
@@ -260,26 +262,44 @@
     </div>
   </div>
 
-  <!-- ③ Gym -->
+  <!-- ③ Gym — objectif personnalisable -->
   <div class="sport-card">
     <div class="sport-card-head">
       <div class="left">
-        <p class="sport-eyebrow">5x / semaine</p>
+        <p class="sport-eyebrow" id="gymEyebrow">3X / SEMAINE</p>
         <h3>Gym</h3>
       </div>
       <div class="sport-icon">🏋️</div>
     </div>
-    <p class="sport-note">Sélectionne tes jours de salle — 5 jours maximum.</p>
-    <div class="gym-pills" id="gymPills">
-      <span class="gym-pill" data-day="Lun">Lun</span>
-      <span class="gym-pill" data-day="Mar">Mar</span>
-      <span class="gym-pill" data-day="Mer">Mer</span>
-      <span class="gym-pill" data-day="Jeu">Jeu</span>
-      <span class="gym-pill" data-day="Ven">Ven</span>
-      <span class="gym-pill" data-day="Sam">Sam</span>
-      <span class="gym-pill" data-day="Dim">Dim</span>
+    <p class="sport-note">Choisis ton objectif hebdomadaire, puis sélectionne tes jours de salle.</p>
+
+    <div>
+      <p class="week-label">Objectif par semaine</p>
+      <div class="gym-pills" id="gymFreqPills">
+        <span class="gym-pill" data-freq="1">1x</span>
+        <span class="gym-pill" data-freq="2">2x</span>
+        <span class="gym-pill" data-freq="3">3x</span>
+        <span class="gym-pill" data-freq="4">4x</span>
+        <span class="gym-pill" data-freq="5">5x</span>
+        <span class="gym-pill" data-freq="6">6x</span>
+        <span class="gym-pill" data-freq="7">Tous les jours</span>
+      </div>
     </div>
-    <span class="gym-counter">Jours sélectionnés : <strong id="gymCounter">0</strong> / 5</span>
+
+    <div>
+      <p class="week-label">Tes jours de salle</p>
+      <div class="gym-pills" id="gymPills">
+        <span class="gym-pill" data-day="Lun">Lun</span>
+        <span class="gym-pill" data-day="Mar">Mar</span>
+        <span class="gym-pill" data-day="Mer">Mer</span>
+        <span class="gym-pill" data-day="Jeu">Jeu</span>
+        <span class="gym-pill" data-day="Ven">Ven</span>
+        <span class="gym-pill" data-day="Sam">Sam</span>
+        <span class="gym-pill" data-day="Dim">Dim</span>
+      </div>
+    </div>
+
+    <span class="gym-counter">Jours sélectionnés : <strong id="gymCounter">0</strong> / <strong id="gymTargetLabel">3</strong></span>
   </div>
 
   <!-- ④ Natation -->
@@ -360,7 +380,8 @@ const DAYS_FR  = ['L','M','M','J','V','S','D'];
 let state = {
   steps: 0, water: 0,
   stretching: {}, swim: {},
-  gym_days: []
+  gym_days: [],
+  gym_target: 3   // objectif par défaut si rien n'est encore enregistré
 };
 
 /* ════════ CHARGEMENT INITIAL ════════ */
@@ -373,6 +394,7 @@ async function loadSport() {
     state.stretching = data.stretching || {};
     state.swim       = data.swim       || {};
     state.gym_days   = data.gym_days   || [];
+    state.gym_target = data.gym_target || 3;
     renderAll();
   } catch(e) {
     console.error('Erreur chargement sport:', e);
@@ -399,7 +421,11 @@ async function saveGym() {
   await fetch('/api/sport/gym', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ week_key: WEEK_KEY, gym_days: state.gym_days })
+    body: JSON.stringify({
+      week_key:   WEEK_KEY,
+      gym_days:   state.gym_days,
+      gym_target: state.gym_target
+    })
   });
   document.dispatchEvent(new CustomEvent('pl:update'));
 }
@@ -438,12 +464,23 @@ function renderSteps() {
     : state.steps + ' / 10k';
 }
 
-/* ── Gym ── */
+/* ── Gym (objectif + jours personnalisés) ── */
 function renderGym() {
+  // pastilles "objectif par semaine"
+  document.querySelectorAll('#gymFreqPills .gym-pill').forEach(p => {
+    p.classList.toggle('on', parseInt(p.dataset.freq, 10) === state.gym_target);
+  });
+
+  // pastilles "jours"
   document.querySelectorAll('#gymPills .gym-pill').forEach(p => {
     p.classList.toggle('on', state.gym_days.includes(p.dataset.day));
   });
-  document.getElementById('gymCounter').textContent = state.gym_days.length;
+
+  // compteur + libellés dynamiques
+  document.getElementById('gymCounter').textContent     = state.gym_days.length;
+  document.getElementById('gymTargetLabel').textContent = state.gym_target;
+  document.getElementById('gymEyebrow').textContent =
+    state.gym_target === 7 ? 'TOUS LES JOURS' : state.gym_target + 'X / SEMAINE';
 }
 
 /* ── Natation ── */
@@ -522,13 +559,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* Gym pills */
+  /* Gym — choix de l'objectif (1x → 7x/semaine) */
+  document.querySelectorAll('#gymFreqPills .gym-pill').forEach(p => {
+    p.addEventListener('click', () => {
+      const freq = parseInt(p.dataset.freq, 10);
+      state.gym_target = freq;
+      // si l'objectif baisse, on retire les jours en trop (les derniers ajoutés)
+      if (state.gym_days.length > freq) {
+        state.gym_days = state.gym_days.slice(0, freq);
+      }
+      renderGym();
+      saveGym();
+    });
+  });
+
+  /* Gym — choix des jours (limité à l'objectif courant) */
   document.querySelectorAll('#gymPills .gym-pill').forEach(p => {
     p.addEventListener('click', () => {
       const day = p.dataset.day;
       const idx = state.gym_days.indexOf(day);
-      if (idx > -1) state.gym_days.splice(idx, 1);
-      else if (state.gym_days.length < 5) state.gym_days.push(day);
+      if (idx > -1) {
+        state.gym_days.splice(idx, 1);
+      } else if (state.gym_days.length < state.gym_target) {
+        state.gym_days.push(day);
+      }
       renderGym();
       saveGym();
     });
