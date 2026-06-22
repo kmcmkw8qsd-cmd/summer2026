@@ -625,6 +625,92 @@ def api_dashboard(date_key):
         'homecare_min':      hc_min,
     })
 
+# ══════════════════════════════════════════════
+# À AJOUTER dans app.py
+# ══════════════════════════════════════════════
+
+# ── 1. Nouveau modèle (ajoute avec les autres modèles) ──────────────────────
+
+class GoalItem(db.Model):
+    id         = db.Column(db.Integer, primary_key=True)
+    username   = db.Column(db.String(50), nullable=False)
+    goal_id    = db.Column(db.BigInteger, nullable=False)   # timestamp JS
+    category   = db.Column(db.String(30), nullable=False)   # deen, sport, etc.
+    title      = db.Column(db.String(200), nullable=False)
+    quarter    = db.Column(db.String(10), default='year')   # q1/q2/q3/q4/year
+    note       = db.Column(db.String(200), default='')
+    done       = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.String(20), default='')
+    __table_args__ = (db.UniqueConstraint('username', 'goal_id'),)
+
+
+# ── 2. Nouvelle page (ajoute avec les autres routes de pages) ───────────────
+
+@app.route('/goals')
+@login_required
+def goals():
+    return render_template('goals.html')
+
+
+# ── 3. API Goals (ajoute avec les autres APIs) ──────────────────────────────
+
+@app.route('/api/goals', methods=['GET'])
+@login_required
+def api_goals_get():
+    u = session['username']
+    items = GoalItem.query.filter_by(username=u).order_by(GoalItem.id).all()
+    return jsonify([{
+        'id':       g.goal_id,
+        'category': g.category,
+        'title':    g.title,
+        'quarter':  g.quarter,
+        'note':     g.note or '',
+        'done':     g.done,
+    } for g in items])
+
+
+@app.route('/api/goals', methods=['POST'])
+@login_required
+def api_goals_save():
+    u = session['username']
+    data = request.get_json()
+    goal_id = int(data.get('id'))
+    g = GoalItem.query.filter_by(username=u, goal_id=goal_id).first()
+    if not g:
+        g = GoalItem(username=u, goal_id=goal_id,
+                     created_at=datetime.utcnow().strftime('%Y-%m-%d'))
+        db.session.add(g)
+    g.category = data.get('category', 'personnel')
+    g.title    = data.get('title', '')
+    g.quarter  = data.get('quarter', 'year')
+    g.note     = data.get('note', '')
+    g.done     = data.get('done', False)
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/goals/<int:goal_id>/toggle', methods=['POST'])
+@login_required
+def api_goals_toggle(goal_id):
+    u = session['username']
+    g = GoalItem.query.filter_by(username=u, goal_id=goal_id).first()
+    if g:
+        g.done = not g.done
+        db.session.commit()
+    return jsonify({'ok': True, 'done': g.done if g else False})
+
+
+@app.route('/api/goals/<int:goal_id>', methods=['DELETE'])
+@login_required
+def api_goals_delete(goal_id):
+    u = session['username']
+    g = GoalItem.query.filter_by(username=u, goal_id=goal_id).first()
+    if g:
+        db.session.delete(g)
+        db.session.commit()
+    return jsonify({'ok': True})
+
+
 
 # ══════════════════════════════════════════════
 # INIT DB + RUN
@@ -634,4 +720,4 @@ with app.app_context():
     db.create_all()
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=2003, debug=True)
+    app.run(host='0.0.0.0', port=2004, debug=True)
