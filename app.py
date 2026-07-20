@@ -22,21 +22,24 @@ def allowed_file(filename):
 db = SQLAlchemy(app)
 
 # ══════════════════════════════════════════════
-# UTILISATEURS (hardcodé comme avant)
+# UTILISATEURS
 # ══════════════════════════════════════════════
 USERS = {
     'sarah':    'sarah2026',
     'fifi':     'fifi2026',
-    'khadidja': 'khadidja2026',
+    'khadidja': 'moimomo123',
     'mimi':     'mimi2026',
     'hadjere':  'hadjere2026',
     'kiki':     'kiki2026',
+    'hiba':     'hiba2026',
+    'dali':     'dali2026',
+
+    
 }
 
 # ══════════════════════════════════════════════
-# HELPER — week_key compatible avec le JS
+# HELPER — week_key
 # ══════════════════════════════════════════════
-
 def get_week_key(d_obj):
     if isinstance(d_obj, str):
         d_obj = datetime.strptime(d_obj, '%Y-%m-%d')
@@ -56,11 +59,11 @@ def get_week_key(d_obj):
 class Profil(db.Model):
     id           = db.Column(db.Integer, primary_key=True)
     username     = db.Column(db.String(50), unique=True, nullable=False)
-    avatar       = db.Column(db.Text, nullable=True)          # base64
+    avatar       = db.Column(db.Text, nullable=True)
     bio          = db.Column(db.String(200), nullable=True)
     display_name = db.Column(db.String(50), nullable=True)
     member_since = db.Column(db.String(50), nullable=True)
-    gallery      = db.Column(db.Text, default='[]')           # JSON [{url, date, label}]
+    gallery      = db.Column(db.Text, default='[]')
 
 class DeenData(db.Model):
     id           = db.Column(db.Integer, primary_key=True)
@@ -169,6 +172,22 @@ class GoalItem(db.Model):
     created_at = db.Column(db.String(20), default='')
     __table_args__ = (db.UniqueConstraint('username', 'goal_id'),)
 
+# ── FEED ─────────────────────────────────────────────────────────────────────
+
+class FeedPost(db.Model):
+    id         = db.Column(db.Integer, primary_key=True)
+    username   = db.Column(db.String(50), nullable=False)
+    content    = db.Column(db.String(500), default='')
+    image_url  = db.Column(db.String(300), default='')
+    category   = db.Column(db.String(30), default='général')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class FeedLike(db.Model):
+    id         = db.Column(db.Integer, primary_key=True)
+    post_id    = db.Column(db.Integer, db.ForeignKey('feed_post.id'), nullable=False)
+    username   = db.Column(db.String(50), nullable=False)
+    __table_args__ = (db.UniqueConstraint('post_id', 'username'),)
+
 
 # ══════════════════════════════════════════════
 # AUTH
@@ -259,6 +278,11 @@ def profil():
 def goals():
     return render_template('goals.html')
 
+@app.route('/feed')
+@login_required
+def feed():
+    return render_template('feed.html')
+
 
 # ══════════════════════════════════════════════
 # API — PROFIL
@@ -282,9 +306,9 @@ def api_profil_get():
 @app.route('/api/profil', methods=['POST'])
 @login_required
 def api_profil_save():
-    u = session['username']
+    u    = session['username']
     data = request.get_json()
-    p = Profil.query.filter_by(username=u).first()
+    p    = Profil.query.filter_by(username=u).first()
     if not p:
         p = Profil(username=u)
         db.session.add(p)
@@ -296,45 +320,133 @@ def api_profil_save():
     db.session.commit()
     return jsonify({'ok': True})
 
-
 @app.route('/api/profil/gallery/upload', methods=['POST'])
 @login_required
 def api_gallery_upload():
     u = session['username']
     if 'photo' not in request.files:
         return jsonify({'error': 'Aucun fichier'}), 400
-
     file = request.files['photo']
     if file.filename == '' or not allowed_file(file.filename):
         return jsonify({'error': 'Fichier invalide'}), 400
-
-    # Dossier par utilisateur : static/uploads/<username>/
     user_folder = os.path.join(app.config['UPLOAD_FOLDER'], u)
     os.makedirs(user_folder, exist_ok=True)
-
     ext      = file.filename.rsplit('.', 1)[1].lower()
     filename = f"{int(datetime.utcnow().timestamp() * 1000)}.{ext}"
     filepath = os.path.join(user_folder, filename)
     file.save(filepath)
-
-    url = f"/static/uploads/{u}/{filename}"
-    return jsonify({'ok': True, 'url': url})
-
+    return jsonify({'ok': True, 'url': f"/static/uploads/{u}/{filename}"})
 
 @app.route('/api/profil/gallery/delete', methods=['POST'])
 @login_required
 def api_gallery_delete():
-    u = session['username']
+    u    = session['username']
     data = request.get_json()
     url  = data.get('url', '')
-
-    # Sécurité : le chemin doit appartenir à l'utilisateur
-    expected_prefix = f"/static/uploads/{u}/"
-    if url.startswith(expected_prefix):
+    if url.startswith(f"/static/uploads/{u}/"):
         filepath = url.lstrip('/')
         if os.path.exists(filepath):
             os.remove(filepath)
+    return jsonify({'ok': True})
 
+
+# ══════════════════════════════════════════════
+# API — FEED
+# ══════════════════════════════════════════════
+
+def get_display_name(username):
+    p = Profil.query.filter_by(username=username).first()
+    return (p.display_name or username) if p else username
+
+def get_avatar(username):
+    p = Profil.query.filter_by(username=username).first()
+    return (p.avatar or '') if p else ''
+
+@app.route('/api/feed', methods=['GET'])
+@login_required
+def api_feed_get():
+    u     = session['username']
+    posts = FeedPost.query.order_by(FeedPost.created_at.desc()).limit(50).all()
+    result = []
+    for post in posts:
+        likes      = FeedLike.query.filter_by(post_id=post.id).count()
+        liked_by_me = FeedLike.query.filter_by(post_id=post.id, username=u).first() is not None
+        result.append({
+            'id':          post.id,
+            'username':    post.username,
+            'displayName': get_display_name(post.username),
+            'avatar':      get_avatar(post.username),
+            'content':     post.content,
+            'image_url':   post.image_url,
+            'category':    post.category,
+            'created_at':  post.created_at.strftime('%Y-%m-%dT%H:%M:%S'),
+            'likes':       likes,
+            'liked':       liked_by_me,
+        })
+    return jsonify(result)
+
+@app.route('/api/feed', methods=['POST'])
+@login_required
+def api_feed_post():
+    u        = session['username']
+    content  = request.form.get('content', '').strip()
+    category = request.form.get('category', 'général')
+    image_url = ''
+
+    if not content and 'image' not in request.files:
+        return jsonify({'error': 'Post vide'}), 400
+
+    # Upload image si présente
+    if 'image' in request.files:
+        file = request.files['image']
+        if file and file.filename and allowed_file(file.filename):
+            user_folder = os.path.join(app.config['UPLOAD_FOLDER'], u, 'feed')
+            os.makedirs(user_folder, exist_ok=True)
+            ext      = file.filename.rsplit('.', 1)[1].lower()
+            filename = f"{int(datetime.utcnow().timestamp() * 1000)}.{ext}"
+            file.save(os.path.join(user_folder, filename))
+            image_url = f"/static/uploads/{u}/feed/{filename}"
+
+    post = FeedPost(
+        username  = u,
+        content   = content[:500],
+        image_url = image_url,
+        category  = category,
+    )
+    db.session.add(post)
+    db.session.commit()
+    return jsonify({'ok': True, 'id': post.id})
+
+@app.route('/api/feed/<int:post_id>/like', methods=['POST'])
+@login_required
+def api_feed_like(post_id):
+    u    = session['username']
+    like = FeedLike.query.filter_by(post_id=post_id, username=u).first()
+    if like:
+        db.session.delete(like)
+        liked = False
+    else:
+        db.session.add(FeedLike(post_id=post_id, username=u))
+        liked = True
+    db.session.commit()
+    count = FeedLike.query.filter_by(post_id=post_id).count()
+    return jsonify({'ok': True, 'liked': liked, 'likes': count})
+
+@app.route('/api/feed/<int:post_id>', methods=['DELETE'])
+@login_required
+def api_feed_delete(post_id):
+    u    = session['username']
+    post = FeedPost.query.filter_by(id=post_id, username=u).first()
+    if post:
+        # Supprimer l'image si elle existe
+        if post.image_url and post.image_url.startswith(f"/static/uploads/{u}/"):
+            filepath = post.image_url.lstrip('/')
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        # Supprimer les likes associés
+        FeedLike.query.filter_by(post_id=post_id).delete()
+        db.session.delete(post)
+        db.session.commit()
     return jsonify({'ok': True})
 
 
@@ -345,21 +457,21 @@ def api_gallery_delete():
 @app.route('/api/deen/<week_key>', methods=['GET'])
 @login_required
 def api_deen_get(week_key):
-    u = session['username']
+    u     = session['username']
     d     = DeenData.query.filter_by(username=u, week_key=week_key).first()
     any_d = DeenData.query.filter_by(username=u).first()
     return jsonify({
-        'salat':        json.loads(d.salat_data    if d     else '{}'),
-        'juzamma':      json.loads(any_d.juzamma   if any_d else '{}'),
-        'quran_hizb':   json.loads(any_d.quran_hizb if any_d else '{}'),
-        'book_title':   any_d.book_title            if any_d else '',
+        'salat':        json.loads(d.salat_data      if d     else '{}'),
+        'juzamma':      json.loads(any_d.juzamma     if any_d else '{}'),
+        'quran_hizb':   json.loads(any_d.quran_hizb  if any_d else '{}'),
+        'book_title':   any_d.book_title              if any_d else '',
         'book_reading': json.loads(any_d.book_reading if any_d else '{}'),
     })
 
 @app.route('/api/deen/salat', methods=['POST'])
 @login_required
 def api_deen_salat():
-    u = session['username']
+    u        = session['username']
     data     = request.get_json()
     week_key = data.get('week_key')
     d = DeenData.query.filter_by(username=u, week_key=week_key).first()
@@ -373,9 +485,9 @@ def api_deen_salat():
 @app.route('/api/deen/persist', methods=['POST'])
 @login_required
 def api_deen_persist():
-    u = session['username']
+    u    = session['username']
     data = request.get_json()
-    d = DeenData.query.filter_by(username=u).first()
+    d    = DeenData.query.filter_by(username=u).first()
     if not d:
         week_key = get_week_key(datetime.utcnow())
         d = DeenData(username=u, week_key=week_key)
@@ -479,7 +591,7 @@ def api_regime_day():
 def api_regime_persist():
     u    = session['username']
     data = request.get_json()
-    p = RegimePersist.query.filter_by(username=u).first()
+    p    = RegimePersist.query.filter_by(username=u).first()
     if not p:
         p = RegimePersist(username=u)
         db.session.add(p)
@@ -531,7 +643,7 @@ def api_learning_day():
 def api_learning_persist():
     u    = session['username']
     data = request.get_json()
-    p = LearningPersist.query.filter_by(username=u).first()
+    p    = LearningPersist.query.filter_by(username=u).first()
     if not p:
         p = LearningPersist(username=u)
         db.session.add(p)
@@ -555,10 +667,10 @@ def api_selfcare_get(date_key):
     s = SelfcareData.query.filter_by(username=u, date_key=date_key).first()
     p = SelfcarePersist.query.filter_by(username=u).first()
     return jsonify({
-        'checks':    json.loads(s.checks    if s else '{}'),
-        'mood':      s.mood                 if s else '',
-        'mood_note': s.mood_note            if s else '',
-        'streak':    json.loads(p.streak    if p else '{}'),
+        'checks':    json.loads(s.checks if s else '{}'),
+        'mood':      s.mood              if s else '',
+        'mood_note': s.mood_note         if s else '',
+        'streak':    json.loads(p.streak if p else '{}'),
     })
 
 @app.route('/api/selfcare/day', methods=['POST'])
@@ -582,7 +694,7 @@ def api_selfcare_day():
 def api_selfcare_persist():
     u    = session['username']
     data = request.get_json()
-    p = SelfcarePersist.query.filter_by(username=u).first()
+    p    = SelfcarePersist.query.filter_by(username=u).first()
     if not p:
         p = SelfcarePersist(username=u)
         db.session.add(p)
@@ -627,7 +739,7 @@ def api_homecare_day():
 def api_homecare_persist():
     u    = session['username']
     data = request.get_json()
-    p = HomecarePersist.query.filter_by(username=u).first()
+    p    = HomecarePersist.query.filter_by(username=u).first()
     if not p:
         p = HomecarePersist(username=u)
         db.session.add(p)
@@ -645,7 +757,6 @@ def api_homecare_persist():
 def api_dashboard(date_key):
     u        = session['username']
     week_key = get_week_key(date_key)
-
     deen       = DeenData.query.filter_by(username=u, week_key=week_key).first()
     salat      = json.loads(deen.salat_data if deen else '{}')
     sport      = SportData.query.filter_by(username=u, date_key=date_key).first()
@@ -656,7 +767,6 @@ def api_dashboard(date_key):
     hc         = HomecareData.query.filter_by(username=u, date_key=date_key).first()
     hc_minutes = json.loads(hc.minutes if hc else '{}')
     hc_min     = sum(v for v in hc_minutes.values() if isinstance(v, (int, float)))
-
     return jsonify({
         'salat':           salat,
         'steps':           sport.steps if sport else 0,

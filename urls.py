@@ -11,4 +11,5 @@ urlpatterns = [
     path('selfcare/', views.selfcare, name='selfcare'),
     path('homecare/', views.homecare, name='homecare'),
     path('goals/', views.goals, name='goals'),
+    
 ]
